@@ -1,0 +1,22 @@
+<body>
+    <br><br>
+    <h1>Gauge:</h1>
+    <br><br>
+    {{range .GaugeValues}}
+        <p> {{.Key}} - {{.Value}}</p>
+    <br><br>
+
+    {{end}}
+
+    <br><hr><br>
+
+    
+    <h1>Counter:</h1>
+    <br><br>
+    {{range .CounterValues}}
+        <p> {{.Key}} - {{.Value}}</p>
+    <br><br>
+    {{end}}
+    <br>
+
+</body>
