@@ -1,7 +1,6 @@
 package metric
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -12,6 +11,11 @@ type Storage interface {
 	FindGaugeByName(name string) (float64, bool)
 	FindAll() MemStorage
 }
+
+const (
+	gaugeType   = "gauge"
+	counterType = "counter"
+)
 
 type MemStorage struct {
 	GaugeMutex   *sync.RWMutex
@@ -40,7 +44,6 @@ func (m *MemStorage) UpdateCounterElem(name string, value int64) {
 	m.CounterMutex.Lock()
 	m.CounterMetrics[name] += value
 	m.CounterMutex.Unlock()
-	fmt.Println(m)
 }
 
 func (m *MemStorage) FindGaugeByName(name string) (float64, bool) {
