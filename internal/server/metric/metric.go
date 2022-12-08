@@ -42,8 +42,8 @@ func (m *MemStorage) UpdateGaugeElem(name string, value float64) {
 
 func (m *MemStorage) UpdateCounterElem(name string, value int64) {
 	m.CounterMutex.Lock()
+	defer m.CounterMutex.Unlock()
 	m.CounterMetrics[name] += value
-	m.CounterMutex.Unlock()
 }
 
 func (m *MemStorage) FindGaugeByName(name string) (float64, bool) {

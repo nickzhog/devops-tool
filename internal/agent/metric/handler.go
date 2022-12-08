@@ -1,7 +1,6 @@
 package metric
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -22,8 +21,6 @@ func getFloat(unk interface{}) (float64, bool) {
 }
 
 func sendRequest(url, postData string) ([]byte, error) {
-	fmt.Println("url sending:", url)
-
 	var err error
 	var answer []byte
 	res, err := http.Post(url, "text/plain", nil)
@@ -35,7 +32,6 @@ func sendRequest(url, postData string) ([]byte, error) {
 	body, _ := io.ReadAll(res.Body)
 
 	answer = body
-	fmt.Println("answer:", string(body))
 
 	return answer, err
 }

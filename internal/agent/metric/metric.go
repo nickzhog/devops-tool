@@ -2,13 +2,13 @@ package metric
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"reflect"
 	"runtime"
 	"sync"
 
 	"github.com/nickzhog/practicum-metric/internal/agent/config"
+	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
 type Metrics struct {
@@ -54,15 +54,16 @@ func (m *Metrics) UpdateMetrics() {
 	m.CounterMutex.Unlock()
 }
 
-func (m *Metrics) SendMetrics(cfg *config.Config) {
+func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	m.GaugeMutex.RLock()
 	for k, v := range m.GaugeMetrics {
 		url := fmt.Sprintf("%s/update/gauge/%s/%f", cfg.SendTo.Address, k, v)
 
-		_, err := sendRequest(url, fmt.Sprintf("%f", v))
+		answer, err := sendRequest(url, fmt.Sprintf("%f", v))
 		if err != nil {
-			log.Printf("req err: %v, request: %v", err.Error(), url)
+			logger.Errorf("req err: %s, request: %s", err.Error(), url)
 		}
+		logger.Tracef("gauge update answer: %s", string(answer))
 	}
 	m.GaugeMutex.RUnlock()
 
@@ -70,10 +71,11 @@ func (m *Metrics) SendMetrics(cfg *config.Config) {
 	for k, v := range m.CounterMetrics {
 		url := fmt.Sprintf("%s/update/counter/%s/%v", cfg.SendTo.Address, k, v)
 
-		_, err := sendRequest(url, fmt.Sprintf("%v", v))
+		answer, err := sendRequest(url, fmt.Sprintf("%v", v))
 		if err != nil {
-			log.Printf("req err: %v, request: %v", err.Error(), url)
+			logger.Errorf("req err: %s, request: %s", err.Error(), url)
 		}
+		logger.Tracef("counter update answer: %s", string(answer))
 	}
 	m.CounterMutex.RUnlock()
 }

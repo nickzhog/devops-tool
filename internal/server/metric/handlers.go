@@ -10,10 +10,12 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
-func showError(w http.ResponseWriter, err string, status int) {
-	m := map[string]interface{}{
+func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
+	h.Logger.Error(err)
+	m := map[string]string{
 		"error": err,
 	}
 	errJson, _ := json.Marshal(m)
@@ -21,8 +23,9 @@ func showError(w http.ResponseWriter, err string, status int) {
 }
 
 type Handler struct {
-	Data Storage
-	Tpl  *template.Template
+	Data   Storage
+	Tpl    *template.Template
+	Logger *logging.Logger
 }
 
 type ForTemplate struct {
@@ -50,7 +53,7 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	m["CounterValues"] = ct
 
 	if err := h.Tpl.ExecuteTemplate(w, "index.html", m); err != nil {
-		showError(w,
+		h.showError(w,
 			fmt.Sprintf("cant load page:%v", err),
 			http.StatusBadGateway)
 		return
@@ -64,7 +67,7 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func metricsToJSON(name, metricType string, value interface{}) string {
+func metricToJSON(name, metricType string, value interface{}) string {
 	m := make(map[string]interface{})
 	m["name"] = name
 	m["type"] = metricType
@@ -77,7 +80,7 @@ func metricsToJSON(name, metricType string, value interface{}) string {
 
 	ans, err := json.Marshal(m)
 	if err != nil {
-		log.Fatalf("metricsToJSON: %s", err.Error())
+		log.Fatalf("metricToJSON: %s", err.Error())
 	}
 
 	return string(ans)
@@ -86,13 +89,13 @@ func metricsToJSON(name, metricType string, value interface{}) string {
 func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		showError(w, "cant get body", http.StatusBadRequest)
+		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
 	var metric Metrics
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
-		showError(w, "cant parse body", http.StatusBadRequest)
+		h.showError(w, "cant parse body", http.StatusBadRequest)
 		return
 	}
 
@@ -107,27 +110,27 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	case counterType:
 		val, exist = h.Data.FindCounterByName(metric.ID)
 	default:
-		showError(w, "wrong metric type", http.StatusBadRequest)
+		h.showError(w, "wrong metric type", http.StatusBadRequest)
 		return
 	}
 	if !exist {
-		showError(w, "not found", http.StatusNotFound)
+		h.showError(w, "not found", http.StatusNotFound)
 		return
 	}
-
-	fmt.Fprintf(w, "%s", metricsToJSON(metric.ID, metric.MType, val))
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, "%s", metricToJSON(metric.ID, metric.MType, val))
 }
 
 func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		showError(w, "cant get body", http.StatusBadRequest)
+		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
 	var metric Metrics
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
-		showError(w, "cant parse body", http.StatusBadRequest)
+		h.showError(w, "cant parse body", http.StatusBadRequest)
 		return
 	}
 
@@ -144,20 +147,20 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.Data.UpdateCounterElem(metric.ID, *metric.Delta)
 		newVal, ok = h.Data.FindCounterByName(metric.ID)
 	default:
-		showError(w, "wrong metric type", http.StatusBadRequest)
+		h.showError(w, "wrong metric type", http.StatusBadRequest)
 	}
 	if !ok {
-		showError(w, "something is wrong", http.StatusBadGateway)
+		h.showError(w, "something is wrong", http.StatusBadGateway)
 		return
 	}
-
-	fmt.Fprintf(w, "%s", metricsToJSON(metric.ID, metric.MType, newVal))
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, "%s", metricToJSON(metric.ID, metric.MType, newVal))
 }
 
 func (h *Handler) SelectHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if len(metricType) < 1 {
-		showError(w,
+		h.showError(w,
 			"metric_type is missing in parameters",
 			http.StatusBadRequest)
 		return
@@ -165,7 +168,7 @@ func (h *Handler) SelectHandler(w http.ResponseWriter, r *http.Request) {
 
 	metricName := chi.URLParam(r, "name")
 	if len(metricName) < 1 {
-		showError(w,
+		h.showError(w,
 			"name is missing in parameters",
 			http.StatusBadRequest)
 		return
@@ -182,20 +185,21 @@ func (h *Handler) SelectHandler(w http.ResponseWriter, r *http.Request) {
 	case counterType:
 		val, exist = h.Data.FindCounterByName(metricName)
 	default:
-		showError(w, "wrong metric type", http.StatusBadRequest)
+		h.showError(w, "wrong metric type", http.StatusBadRequest)
 		return
 	}
 	if !exist {
-		showError(w, "not found", http.StatusNotFound)
+		h.showError(w, "not found", http.StatusNotFound)
 		return
 	}
-	fmt.Fprintf(w, "%s", metricsToJSON(metricName, metricType, val))
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprintf(w, "%s", metricToJSON(metricName, metricType, val))
 }
 
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if len(metricType) < 1 {
-		showError(w,
+		h.showError(w,
 			"metric_type is missing in parameters",
 			http.StatusBadRequest)
 		return
@@ -203,7 +207,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	metricName := chi.URLParam(r, "name")
 	if len(metricName) < 1 {
-		showError(w,
+		h.showError(w,
 			"name is missing in parameters",
 			http.StatusBadRequest)
 		return
@@ -215,7 +219,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	case gaugeType:
 		metricValueFloat, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
-			showError(w,
+			h.showError(w,
 				fmt.Sprintf("cant convert value to float:%v", err.Error()),
 				http.StatusBadRequest)
 			return
@@ -224,18 +228,19 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	case counterType:
 		metricValueInt, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
-			showError(w,
+			h.showError(w,
 				fmt.Sprintf("cant convert value to int64:%v", err.Error()),
 				http.StatusBadRequest)
 			return
 		}
 		h.Data.UpdateCounterElem(metricName, metricValueInt)
 	default:
-		showError(w,
+		h.showError(w,
 			"wrong element type",
 			http.StatusNotImplemented)
 		return
 	}
-
-	fmt.Fprintf(w, "%s", metricsToJSON(metricName, metricType, metricValue))
+	w.Header().Set("Content-Type", "application/json")
+	h.Logger.Tracef("updated: %v", metricToJSON(metricName, metricType, metricValue))
+	fmt.Fprintf(w, "%s", metricToJSON(metricName, metricType, metricValue))
 }
