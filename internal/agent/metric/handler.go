@@ -28,6 +28,8 @@ func sendRequest(url, postData, method string) ([]byte, error) {
 	var answer []byte
 
 	var res *http.Response
+	defer res.Body.Close()
+
 	switch strings.ToLower(method) {
 	case "get":
 		res, err = http.Get(url)
@@ -41,7 +43,6 @@ func sendRequest(url, postData, method string) ([]byte, error) {
 	if err != nil {
 		return answer, err
 	}
-	defer res.Body.Close()
 	body, err := io.ReadAll(res.Body)
 
 	answer = body
