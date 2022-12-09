@@ -1,10 +1,13 @@
 package metric
 
 import (
+	"bytes"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -20,16 +23,26 @@ func getFloat(unk interface{}) (float64, bool) {
 	return fv.Float(), true
 }
 
-func sendRequest(url, postData string) ([]byte, error) {
+func sendRequest(url, postData, method string) ([]byte, error) {
 	var err error
 	var answer []byte
-	res, err := http.Post(url, "text/plain", nil)
+
+	var res *http.Response
+	switch strings.ToLower(method) {
+	case "get":
+		res, err = http.Get(url)
+	case "post":
+		res, err = http.Post(url, "application/json", bytes.NewBuffer([]byte(postData)))
+
+	default:
+		log.Fatalf("wrong method: %s", method)
+	}
 
 	if err != nil {
 		return answer, err
 	}
 	defer res.Body.Close()
-	body, _ := io.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 
 	answer = body
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/nickzhog/practicum-metric/internal/agent/config"
+	"github.com/nickzhog/practicum-metric/internal/server/metric"
 	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
@@ -55,27 +56,52 @@ func (m *Metrics) UpdateMetrics() {
 }
 
 func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
+	var url string
+	var answer []byte
+	var err error
 	m.GaugeMutex.RLock()
 	for k, v := range m.GaugeMetrics {
-		url := fmt.Sprintf("%s/update/gauge/%s/%f", cfg.SendTo.Address, k, v)
+		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.SendTo.Address, k, v)
 
-		answer, err := sendRequest(url, fmt.Sprintf("%f", v))
+		answer, err = sendRequest(url, "", "get")
 		if err != nil {
-			logger.Errorf("req err: %s, request: %s", err.Error(), url)
+			logger.Errorf("req err: %s, url: %s", err.Error(), url)
 		}
 		logger.Tracef("gauge update answer: %s", string(answer))
+
+		////
+
+		url = fmt.Sprintf("%s/update", cfg.SendTo.Address)
+		body := metric.MetricToJSON(k, metric.GaugeType, v)
+		answer, err = sendRequest(url, body, "post")
+		if err != nil {
+			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
+		}
+		logger.Tracef("gauge update(json) answer: %s", string(answer))
+
 	}
 	m.GaugeMutex.RUnlock()
 
 	m.CounterMutex.RLock()
 	for k, v := range m.CounterMetrics {
-		url := fmt.Sprintf("%s/update/counter/%s/%v", cfg.SendTo.Address, k, v)
+		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.SendTo.Address, k, v)
 
-		answer, err := sendRequest(url, fmt.Sprintf("%v", v))
+		answer, err = sendRequest(url, "", "get")
 		if err != nil {
-			logger.Errorf("req err: %s, request: %s", err.Error(), url)
+			logger.Errorf("req err: %s, url: %s", err.Error(), url)
 		}
 		logger.Tracef("counter update answer: %s", string(answer))
+
+		////
+
+		url = fmt.Sprintf("%s/update", cfg.SendTo.Address)
+		body := metric.MetricToJSON(k, metric.CounterType, v)
+		answer, err = sendRequest(url, body, "post")
+		if err != nil {
+			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
+		}
+
+		logger.Tracef("counter update(json) answer: %s", string(answer))
 	}
 	m.CounterMutex.RUnlock()
 }
