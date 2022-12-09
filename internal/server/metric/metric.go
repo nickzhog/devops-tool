@@ -1,6 +1,8 @@
 package metric
 
 import (
+	"encoding/json"
+	"log"
 	"sync"
 )
 
@@ -13,8 +15,8 @@ type Storage interface {
 }
 
 const (
-	gaugeType   = "gauge"
-	counterType = "counter"
+	GaugeType   = "gauge"
+	CounterType = "counter"
 )
 
 type MemStorage struct {
@@ -70,4 +72,23 @@ func (m *MemStorage) FindAll() MemStorage {
 		GaugeMetrics:   m.GaugeMetrics,
 		CounterMetrics: m.CounterMetrics,
 	}
+}
+
+func MetricToJSON(name, metricType string, value interface{}) string {
+	m := make(map[string]interface{})
+	m["id"] = name
+	m["type"] = metricType
+	switch metricType {
+	case GaugeType:
+		m["value"] = value
+	case CounterType:
+		m["delta"] = value
+	}
+
+	ans, err := json.Marshal(m)
+	if err != nil {
+		log.Fatalf("metricToJSON: %s", err.Error())
+	}
+
+	return string(ans)
 }
