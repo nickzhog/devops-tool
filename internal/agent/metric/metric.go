@@ -3,6 +3,7 @@ package metric
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"reflect"
 	"runtime"
 	"sync"
@@ -63,7 +64,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range m.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		answer, err = sendRequest(url, "", "get")
+		answer, err = sendRequest(url, "", http.MethodGet)
 		if err != nil {
 			logger.Errorf("req err: %s, url: %s", err.Error(), url)
 		}
@@ -73,7 +74,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.GaugeType, v)
-		answer, err = sendRequest(url, body, "post")
+		answer, err = sendRequest(url, body, http.MethodPost)
 		if err != nil {
 			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
 		}
@@ -86,7 +87,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range m.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		answer, err = sendRequest(url, "", "get")
+		answer, err = sendRequest(url, "", http.MethodGet)
 		if err != nil {
 			logger.Errorf("req err: %s, url: %s", err.Error(), url)
 		}
@@ -96,7 +97,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.CounterType, v)
-		answer, err = sendRequest(url, body, "post")
+		answer, err = sendRequest(url, body, http.MethodPost)
 		if err != nil {
 			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
 		}
