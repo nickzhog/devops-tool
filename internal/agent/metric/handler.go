@@ -3,12 +3,9 @@ package metric
 import (
 	"bytes"
 	"io"
-	"log"
-	"math/rand"
 	"net/http"
 	"reflect"
 	"strings"
-	"time"
 )
 
 var floatType = reflect.TypeOf(float64(0))
@@ -24,32 +21,22 @@ func getFloat(unk interface{}) (float64, bool) {
 }
 
 func sendRequest(url, postData, method string) ([]byte, error) {
-	var err error
-	var answer []byte
+	if !strings.HasPrefix(url, "http") {
+		url = "http://" + url
+	}
 
-	var res *http.Response
+	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer([]byte(postData)))
+	if err != nil {
+		return []byte(``), err
+	}
+
+	res, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return []byte(``), err
+	}
 	defer res.Body.Close()
 
-	switch strings.ToLower(method) {
-	case "get":
-		res, err = http.Get(url)
-	case "post":
-		res, err = http.Post(url, "application/json", bytes.NewBuffer([]byte(postData)))
-
-	default:
-		log.Fatalf("wrong method: %s", method)
-	}
-
-	if err != nil {
-		return answer, err
-	}
-	body, err := io.ReadAll(res.Body)
-
-	answer = body
+	answer, err := io.ReadAll(res.Body)
 
 	return answer, err
-}
-
-func init() {
-	rand.Seed(time.Now().Unix())
 }
