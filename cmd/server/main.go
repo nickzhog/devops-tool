@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"html/template"
 	"net/http"
 
@@ -15,6 +14,8 @@ import (
 func main() {
 	cfg := config.GetConfig()
 	logger := logging.GetLogger()
+	logger.Traceln("config:", cfg)
+
 	storage := metric.NewMemStorage()
 
 	r := chi.NewRouter()
@@ -46,5 +47,5 @@ func main() {
 		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateHandler)
 	})
 
-	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", cfg.Setting.Port), r))
+	logger.Fatal(http.ListenAndServe(cfg.Setting.Address, r))
 }

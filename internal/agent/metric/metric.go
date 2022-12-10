@@ -61,7 +61,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	var err error
 	m.GaugeMutex.RLock()
 	for k, v := range m.GaugeMetrics {
-		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.SendTo.Address, k, v)
+		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
 		answer, err = sendRequest(url, "", "get")
 		if err != nil {
@@ -71,7 +71,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 
 		////
 
-		url = fmt.Sprintf("%s/update", cfg.SendTo.Address)
+		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.GaugeType, v)
 		answer, err = sendRequest(url, body, "post")
 		if err != nil {
@@ -84,7 +84,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 
 	m.CounterMutex.RLock()
 	for k, v := range m.CounterMetrics {
-		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.SendTo.Address, k, v)
+		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
 		answer, err = sendRequest(url, "", "get")
 		if err != nil {
@@ -94,7 +94,7 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 
 		////
 
-		url = fmt.Sprintf("%s/update", cfg.SendTo.Address)
+		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.CounterType, v)
 		answer, err = sendRequest(url, body, "post")
 		if err != nil {

@@ -12,6 +12,7 @@ import (
 func main() {
 	cfg := config.GetConfig()
 	logger := logging.GetLogger()
+	logger.Traceln("config:", cfg)
 
 	var metrics metric.Metrics
 	metrics.InitMetrics()
@@ -24,7 +25,7 @@ func main() {
 		defer wg.Done()
 		for {
 			metrics.UpdateMetrics()
-			time.Sleep(time.Millisecond * time.Duration(cfg.Intervals.PollInterval))
+			time.Sleep(cfg.Settings.PollInterval)
 		}
 	}()
 
@@ -33,7 +34,7 @@ func main() {
 		defer wg.Done()
 		for {
 			metrics.SendMetrics(cfg, logger)
-			time.Sleep(time.Millisecond * time.Duration(cfg.Intervals.ReportInterval))
+			time.Sleep(cfg.Settings.ReportInterval)
 		}
 	}()
 
