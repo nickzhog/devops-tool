@@ -7,11 +7,13 @@ import (
 )
 
 type Storage interface {
+	SetStorage(storage Storage)
 	UpdateGaugeElem(name string, value float64)
 	UpdateCounterElem(name string, value int64)
 	FindCounterByName(name string) (int64, bool)
 	FindGaugeByName(name string) (float64, bool)
 	FindAll() MemStorage
+	ExportToJSON() string
 }
 
 const (
@@ -34,6 +36,18 @@ func NewMemStorage() Storage {
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}
+}
+
+func (m *MemStorage) SetStorage(storage Storage) {
+	m2 := storage.FindAll()
+
+	m.GaugeMutex.Lock()
+	m.GaugeMetrics = m2.GaugeMetrics
+	m.GaugeMutex.Unlock()
+
+	m.CounterMutex.Lock()
+	m.CounterMetrics = m2.CounterMetrics
+	m.CounterMutex.Unlock()
 }
 
 func (m *MemStorage) UpdateGaugeElem(name string, value float64) {
@@ -74,6 +88,13 @@ func (m *MemStorage) FindAll() MemStorage {
 	}
 }
 
+type Metrics struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
 func MetricToJSON(name, metricType string, value interface{}) string {
 	m := make(map[string]interface{})
 	m["id"] = name
@@ -90,4 +111,36 @@ func MetricToJSON(name, metricType string, value interface{}) string {
 	ans, _ := json.Marshal(m)
 
 	return string(ans)
+}
+
+func (m *MemStorage) ExportToJSON() string {
+	encoded := "["
+
+	m.GaugeMutex.RLock()
+	defer m.GaugeMutex.RUnlock()
+	m.CounterMutex.RLock()
+	defer m.CounterMutex.RUnlock()
+
+	valueCount := len(m.CounterMetrics) + len(m.GaugeMetrics)
+	iterCount := 0
+	for k, v := range m.GaugeMetrics {
+		iterCount++
+		encoded += MetricToJSON(k, GaugeType, v)
+		if valueCount == iterCount {
+			break
+		}
+		encoded += ",\n"
+	}
+
+	for k, v := range m.CounterMetrics {
+		iterCount++
+		encoded += MetricToJSON(k, CounterType, v)
+		if valueCount == iterCount {
+			break
+		}
+		encoded += ",\n"
+	}
+
+	encoded += "]"
+	return encoded
 }

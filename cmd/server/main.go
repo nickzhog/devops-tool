@@ -17,6 +17,7 @@ func main() {
 	logger.Traceln("config:", cfg)
 
 	storage := metric.NewMemStorage()
+	db.Connect(storage, cfg, logger)
 
 	r := chi.NewRouter()
 

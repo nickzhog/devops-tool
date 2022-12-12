@@ -2,6 +2,7 @@ package config
 
 import (
 	"sync"
+	"time"
 
 	"github.com/caarlos0/env"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -9,7 +10,10 @@ import (
 
 type Config struct {
 	Setting struct {
-		Address string `yaml:"address" env-default:":8080" env:"ADDRESS,required"`
+		Address       string        `yaml:"address" env-default:":8080" env:"ADDRESS,required"`
+		StoreInterval time.Duration `yaml:"store_interval" env-default:"300s" env:"STORE_INTERVAL"`
+		StoreFile     string        `yaml:"store_file" env-default:"/tmp/devops-metrics-db.json" env:"STORE_FILE"`
+		Restore       bool          `yaml:"restore" env-default:"true" env:"RESTORE"`
 	} `yaml:"settings"`
 }
 
@@ -31,6 +35,10 @@ func GetConfig() *Config {
 			_, _ = cleanenv.GetDescription(instance, nil)
 			// log.Fatal("load config err:", err)
 			instance.Setting.Address = ":8080"
+
+			instance.Setting.StoreInterval = time.Second * 300
+			instance.Setting.StoreFile = "/tmp/devops-metrics-db.json"
+			instance.Setting.Restore = true
 		}
 	})
 
