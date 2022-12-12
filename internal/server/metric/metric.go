@@ -83,12 +83,11 @@ func MetricToJSON(name, metricType string, value interface{}) string {
 		m["value"] = value
 	case CounterType:
 		m["delta"] = value
+	default:
+		log.Fatal("MetricToJSON wrong type")
 	}
 
-	ans, err := json.Marshal(m)
-	if err != nil {
-		log.Fatalf("metricToJSON: %s", err.Error())
-	}
+	ans, _ := json.Marshal(m)
 
 	return string(ans)
 }

@@ -13,12 +13,14 @@ import (
 )
 
 func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
-	h.Logger.Error(err)
+	// h.Logger.Error(err)
 	m := map[string]string{
 		"error": err,
 	}
 	errJSON, _ := json.Marshal(m)
-	http.Error(w, string(errJSON), status)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	fmt.Fprint(w, string(errJSON))
 }
 
 type Handler struct {

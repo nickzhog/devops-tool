@@ -1,30 +1,48 @@
 package metric
 
-import "testing"
+import (
+	"sync"
+	"testing"
 
-func TestMemStorage_UpdateGaugeElem(t *testing.T) {
-	type fields struct {
-		GaugeMetrics   map[string]float64
-		CounterMetrics map[string]int64
+	"github.com/stretchr/testify/assert"
+)
+
+func TestMemStorage_UpdateCounterElem(t *testing.T) {
+
+	storage := &MemStorage{
+		GaugeMutex:     &sync.RWMutex{},
+		CounterMutex:   &sync.RWMutex{},
+		GaugeMetrics:   make(map[string]float64),
+		CounterMetrics: make(map[string]int64),
 	}
-	type args struct {
-		name  string
-		value float64
-	}
+	storage.CounterMetrics["good_counter"] = 10
+
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name       string
+		setName    string
+		setValue   int64
+		wantResult int64
 	}{
-		// TODO: Add test cases.
+		{
+			name:       "increment test",
+			setName:    "good_counter",
+			setValue:   10,
+			wantResult: 20,
+		},
+		{
+			name:       "new value",
+			setName:    "good_counter2",
+			setValue:   10,
+			wantResult: 10,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
-				GaugeMetrics:   tt.fields.GaugeMetrics,
-				CounterMetrics: tt.fields.CounterMetrics,
-			}
-			m.UpdateGaugeElem(tt.args.name, tt.args.value)
+			storage.UpdateCounterElem(tt.setName, tt.setValue)
+			val, ok := storage.FindCounterByName(tt.setName)
+			assert := assert.New(t)
+			assert.Equal(tt.wantResult, val)
+			assert.True(ok)
 		})
 	}
 }
