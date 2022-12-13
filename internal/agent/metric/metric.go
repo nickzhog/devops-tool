@@ -64,22 +64,13 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range m.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		answer, err = sendRequest(url, "", http.MethodGet)
-		if err != nil {
-			logger.Errorf("req err: %s, url: %s", err.Error(), url)
-		}
-		logger.Tracef("gauge update answer: %s", string(answer))
+		_, _ = sendRequest(url, "", http.MethodGet)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.GaugeType, v)
 		answer, err = sendRequest(url, body, http.MethodPost)
-		if err != nil {
-			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
-		}
-		logger.Tracef("gauge update(json) answer: %s", string(answer))
-
 	}
 	m.GaugeMutex.RUnlock()
 
@@ -87,22 +78,14 @@ func (m *Metrics) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range m.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		answer, err = sendRequest(url, "", http.MethodGet)
-		if err != nil {
-			logger.Errorf("req err: %s, url: %s", err.Error(), url)
-		}
-		logger.Tracef("counter update answer: %s", string(answer))
+		_, _ = sendRequest(url, "", http.MethodGet)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		body := metric.MetricToJSON(k, metric.CounterType, v)
 		answer, err = sendRequest(url, body, http.MethodPost)
-		if err != nil {
-			logger.Errorf("req err: %s, url: %s, body: %s", err.Error(), url, body)
-		}
-
-		logger.Tracef("counter update(json) answer: %s", string(answer))
 	}
 	m.CounterMutex.RUnlock()
+	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %v", cfg.Settings.Address, err, string(answer))
 }

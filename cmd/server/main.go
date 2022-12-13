@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/nickzhog/practicum-metric/internal/server/config"
+	"github.com/nickzhog/practicum-metric/internal/server/db"
 	"github.com/nickzhog/practicum-metric/internal/server/metric"
 	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
@@ -48,5 +49,5 @@ func main() {
 		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateHandler)
 	})
 
-	logger.Fatal(http.ListenAndServe(cfg.Setting.Address, r))
+	logger.Fatal(http.ListenAndServe(cfg.Settings.Address, r))
 }
