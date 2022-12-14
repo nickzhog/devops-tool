@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/nickzhog/practicum-metric/internal/server/compress"
 	"github.com/nickzhog/practicum-metric/internal/server/config"
 	"github.com/nickzhog/practicum-metric/internal/server/db"
 	"github.com/nickzhog/practicum-metric/internal/server/metric"
@@ -25,6 +26,8 @@ func main() {
 	r.Use(middleware.RealIP)
 	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	r.Use(compress.GzipMiddleWare)
 
 	tpl, err := template.ParseGlob("pages/*.html")
 	if err != nil {
