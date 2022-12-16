@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"sync"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -17,34 +16,28 @@ type Config struct {
 	} `yaml:"settings"`
 }
 
-var instance *Config
-var once sync.Once
-
 func GetConfig() *Config {
-	once.Do(func() {
-		instance = &Config{}
-		address := flag.String("a", ":8080", "address for server listen")
-		restore := flag.Bool("r", true, "restore latest values")
-		storeFile := flag.String("f", "/tmp/devops-metrics-db.json", "file for db")
-		flag.DurationVar(&instance.Settings.StoreInterval, "i", time.Second*300, "interval for db update")
-		flag.Parse()
+	cfg := &Config{}
+	address := flag.String("a", ":8080", "address for server listen")
+	restore := flag.Bool("r", true, "restore latest values")
+	storeFile := flag.String("f", "/tmp/devops-metrics-db.json", "file for db")
+	flag.DurationVar(&cfg.Settings.StoreInterval, "i", time.Second*300, "interval for db update")
+	flag.Parse()
 
-		instance.Settings.Address = *address
-		instance.Settings.Restore = *restore
-		instance.Settings.StoreFile = *storeFile
+	cfg.Settings.Address = *address
+	cfg.Settings.Restore = *restore
+	cfg.Settings.StoreFile = *storeFile
 
-		cfgEnv := Config{}
-		err := env.Parse(&cfgEnv.Settings)
-		if err == nil {
-			instance.Settings = cfgEnv.Settings
-			return
-		}
+	cfgEnv := Config{}
+	err := env.Parse(&cfgEnv.Settings)
+	if err == nil {
+		cfg.Settings = cfgEnv.Settings
+	}
 
-		// if err := cleanenv.ReadConfig("config.yml", instance); err != nil {
-		// 	_, _ = cleanenv.GetDescription(instance, nil)
-		// 		log.Fatal("load config err:", err)
-		// }
-	})
+	// if err := cleanenv.ReadConfig("config.yml", cfg); err != nil {
+	// 	_, _ = cleanenv.GetDescription(cfg, nil)
+	// 		log.Fatal("load config err:", err)
+	// }
 
-	return instance
+	return cfg
 }

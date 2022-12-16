@@ -2,7 +2,6 @@ package config
 
 import (
 	"flag"
-	"sync"
 	"time"
 
 	"github.com/caarlos0/env"
@@ -16,33 +15,29 @@ type Config struct {
 	} `yaml:"settings"`
 }
 
-var instance *Config
-var once sync.Once
-
 func GetConfig() *Config {
-	once.Do(func() {
-		instance = &Config{}
-		address := flag.String("a", "http://127.0.0.1:8080", "address for sending metrics")
-		flag.DurationVar(&instance.Settings.ReportInterval, "r", time.Second*10, "interval for send metrics")
-		flag.DurationVar(&instance.Settings.PollInterval, "p", time.Second*2, "interval for update metrics")
-		flag.Parse()
+	cfg := &Config{}
+	address := flag.String("a", "http://127.0.0.1:8080", "address for sending metrics")
+	flag.DurationVar(&cfg.Settings.ReportInterval, "r", time.Second*10, "interval for send metrics")
+	flag.DurationVar(&cfg.Settings.PollInterval, "p", time.Second*2, "interval for update metrics")
+	flag.Parse()
 
-		instance.Settings.Address = *address
+	cfg.Settings.Address = *address
 
-		cfgEnv := Config{}
-		err := env.Parse(&cfgEnv.Settings)
-		if err == nil {
-			instance.Settings = cfgEnv.Settings
-			return
-		}
+	cfgEnv := Config{}
+	err := env.Parse(&cfgEnv.Settings)
+	if err == nil {
+		cfg.Settings = cfgEnv.Settings
+		return cfg
+	}
 
-		// if err := cleanenv.ReadConfig("config.yml", instance); err != nil {
-		// 	_, _ = cleanenv.GetDescription(instance, nil)
-		// 	// log.Fatal("load config err:", err)
-		// 	instance.Settings.PollInterval = time.Second * 2
-		// 	instance.Settings.ReportInterval = time.Second * 10
-		// 	instance.Settings.Address = "http://127.0.0.1:8080"
-		// }
-	})
-	return instance
+	// if err := cleanenv.ReadConfig("config.yml", cfg); err != nil {
+	// 	_, _ = cleanenv.GetDescription(cfg, nil)
+	// 	// log.Fatal("load config err:", err)
+	// 	cfg.Settings.PollInterval = time.Second * 2
+	// 	cfg.Settings.ReportInterval = time.Second * 10
+	// 	cfg.Settings.Address = "http://127.0.0.1:8080"
+	// }
+
+	return cfg
 }
