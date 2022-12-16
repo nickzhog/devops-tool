@@ -7,7 +7,6 @@ import (
 )
 
 type Storage interface {
-	SetStorage(storage Storage)
 	UpdateGaugeElem(name string, value float64)
 	UpdateCounterElem(name string, value int64)
 	FindCounterByName(name string) (int64, bool)
@@ -29,25 +28,13 @@ type MemStorage struct {
 	CounterMetrics map[string]int64 `json:"counter_metrics,omitempty"`
 }
 
-func NewMemStorage() Storage {
+func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		GaugeMutex:     &sync.RWMutex{},
 		CounterMutex:   &sync.RWMutex{},
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}
-}
-
-func (m *MemStorage) SetStorage(storage Storage) {
-	m2 := storage.FindAll()
-
-	m.GaugeMutex.Lock()
-	m.GaugeMetrics = m2.GaugeMetrics
-	m.GaugeMutex.Unlock()
-
-	m.CounterMutex.Lock()
-	m.CounterMetrics = m2.CounterMetrics
-	m.CounterMutex.Unlock()
 }
 
 func (m *MemStorage) UpdateGaugeElem(name string, value float64) {
