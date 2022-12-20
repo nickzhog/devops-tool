@@ -67,7 +67,7 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
-	var metric Metrics
+	var metric MetricsExport
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
 		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
@@ -102,7 +102,7 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
-	var metric Metrics
+	var metric MetricsExport
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
 		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)

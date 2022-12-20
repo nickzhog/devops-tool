@@ -10,8 +10,8 @@ import (
 func TestMemStorage_UpdateCounterElem(t *testing.T) {
 
 	storage := &MemStorage{
-		GaugeMutex:     &sync.RWMutex{},
-		CounterMutex:   &sync.RWMutex{},
+		gaugeMutex:     &sync.RWMutex{},
+		counterMutex:   &sync.RWMutex{},
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}

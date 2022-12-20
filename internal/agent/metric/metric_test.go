@@ -54,7 +54,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 
-					var elem serverMetric.Metrics
+					var elem serverMetric.MetricsExport
 					err = json.Unmarshal(body, &elem)
 					if err != nil {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
