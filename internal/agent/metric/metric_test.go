@@ -14,19 +14,18 @@ import (
 )
 
 func TestMetrics_SendMetrics(t *testing.T) {
-	var storage Metrics
-	storage.InitMetrics()
+	storage := NewAgent()
 	cfg := &config.Config{}
 	logger := logging.GetLogger()
 	cfg.Settings.Address = "http://localhost"
 
 	tests := []struct {
 		name    string
-		metrics Metrics
+		metrics Agent
 	}{
 		{
 			name: "case #1",
-			metrics: Metrics{
+			metrics: Agent{
 				CounterMetrics: map[string]int64{
 					"good_counter": 10,
 				},
@@ -34,7 +33,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 		},
 		{
 			name: "case #2",
-			metrics: Metrics{
+			metrics: Agent{
 				GaugeMetrics: map[string]float64{
 					"good_gauge": 15.51,
 				},

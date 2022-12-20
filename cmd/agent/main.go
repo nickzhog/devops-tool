@@ -12,29 +12,35 @@ import (
 func main() {
 	cfg := config.GetConfig()
 	logger := logging.GetLogger()
-	logger.Traceln("config:", cfg)
+	logger.Tracef("config: %+v", cfg)
 
-	var metrics metric.Metrics
-	metrics.InitMetrics()
-	metrics.UpdateMetrics()
-	metrics.SendMetrics(cfg, logger)
+	agent := metric.NewAgent()
+
+	agent.UpdateMetrics()
+	agent.SendMetrics(cfg, logger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		t := time.NewTicker(cfg.Settings.PollInterval)
 		for {
-			metrics.UpdateMetrics()
-			time.Sleep(cfg.Settings.PollInterval)
+			select {
+			case <-t.C:
+				agent.UpdateMetrics()
+			}
 		}
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		t := time.NewTicker(cfg.Settings.ReportInterval)
 		for {
-			metrics.SendMetrics(cfg, logger)
-			time.Sleep(cfg.Settings.ReportInterval)
+			select {
+			case <-t.C:
+				agent.SendMetrics(cfg, logger)
+			}
 		}
 	}()
 
