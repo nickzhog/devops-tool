@@ -21,11 +21,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 
 	type request struct {
 		method string
-		data   string
+		data   []byte
 	}
 	type want struct {
 		code        int
-		response    string
+		response    []byte
 		contentType string
 	}
 	tests := []struct {
@@ -49,11 +49,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "wrong type",
 			request: request{
 				method: http.MethodPost,
-				data:   `{"id":"good_metric","type":"new_type", "value": 123}`,
+				data:   []byte(`{"id":"good_metric","type":"new_type", "value": 123}`),
 			},
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    string([]byte(`{"error":"wrong metric type"}`)),
+				response:    []byte(`{"error":"wrong metric type"}`),
 				contentType: "application/json",
 			},
 		},
@@ -73,11 +73,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "empty body",
 			request: request{
 				method: http.MethodPost,
-				data:   ``,
+				data:   []byte(``),
 			},
 			want: want{
 				code:        http.StatusBadRequest,
-				response:    string([]byte(`{"error":"cant parse body:"}`)),
+				response:    []byte(`{"error":"cant parse body:"}`),
 				contentType: "application/json",
 			},
 		},
@@ -98,7 +98,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			assert.NoError(err)
 
-			assert.Equal(tt.want.response, string(resBody))
+			assert.Equal(tt.want.response, resBody)
 			assert.Equal(tt.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}

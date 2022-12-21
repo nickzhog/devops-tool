@@ -20,12 +20,12 @@ func getFloat(unk interface{}) (float64, bool) {
 	return fv.Float(), true
 }
 
-func sendRequest(url, postData, method string) ([]byte, error) {
+func sendRequest(url string, postData []byte, method string) ([]byte, error) {
 	if !strings.HasPrefix(url, "http") {
 		url = "http://" + url
 	}
 
-	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer([]byte(postData)))
+	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer(postData))
 	if err != nil {
 		return []byte(``), err
 	}

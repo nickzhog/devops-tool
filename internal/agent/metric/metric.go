@@ -61,7 +61,7 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		_, _ = sendRequest(url, "", http.MethodGet)
+		_, _ = sendRequest(url, []byte(``), http.MethodGet)
 
 		////
 
@@ -73,7 +73,7 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		_, _ = sendRequest(url, "", http.MethodGet)
+		_, _ = sendRequest(url, []byte(``), http.MethodGet)
 
 		////
 

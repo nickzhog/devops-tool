@@ -81,7 +81,7 @@ type MetricsExport struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func MetricToJSON(name, metricType string, value interface{}) string {
+func MetricToJSON(name, metricType string, value interface{}) []byte {
 	m := make(map[string]interface{})
 	m["id"] = name
 	m["type"] = metricType
@@ -94,7 +94,7 @@ func MetricToJSON(name, metricType string, value interface{}) string {
 
 	ans, _ := json.Marshal(m)
 
-	return string(ans)
+	return ans
 }
 
 func (m *MemStorage) ExportToJSON() []byte {
@@ -108,7 +108,7 @@ func (m *MemStorage) ExportToJSON() []byte {
 	iterCount := 0
 	for k, v := range m.GaugeMetrics {
 		iterCount++
-		encoded += MetricToJSON(k, GaugeType, v)
+		encoded += string(MetricToJSON(k, GaugeType, v))
 		if valueCount == iterCount {
 			break
 		}
@@ -117,7 +117,7 @@ func (m *MemStorage) ExportToJSON() []byte {
 
 	for k, v := range m.CounterMetrics {
 		iterCount++
-		encoded += MetricToJSON(k, CounterType, v)
+		encoded += string(MetricToJSON(k, CounterType, v))
 		if valueCount == iterCount {
 			break
 		}
