@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -61,24 +62,26 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		_, _ = sendRequest(url, []byte(``), http.MethodGet)
+		sendRequest(url, []byte(``), http.MethodGet)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		body := metric.MetricToJSON(k, metric.GaugeType, v)
+		metric := metric.MetricToExport(k, metric.GaugeType, v)
+		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
 	}
 
 	for k, v := range a.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		_, _ = sendRequest(url, []byte(``), http.MethodGet)
+		sendRequest(url, []byte(``), http.MethodGet)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		body := metric.MetricToJSON(k, metric.CounterType, v)
+		metric := metric.MetricToExport(k, metric.CounterType, v)
+		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
 	}
 

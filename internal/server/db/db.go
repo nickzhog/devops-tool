@@ -47,7 +47,7 @@ func getFromFile(file string, logger *logging.Logger) *metric.MemStorage {
 		logger.Error(err)
 		return newStorage
 	}
-	var metrics []metric.MetricsExport
+	var metrics []metric.MetricExport
 	err = json.Unmarshal(data, &metrics)
 	if err != nil {
 		logger.Error(err)
@@ -57,9 +57,9 @@ func getFromFile(file string, logger *logging.Logger) *metric.MemStorage {
 	for _, v := range metrics {
 		switch v.MType {
 		case metric.CounterType:
-			newStorage.UpdateCounterElem(v.ID, *v.Delta)
+			newStorage.UpdateCounter(v.ID, *v.Delta)
 		case metric.GaugeType:
-			newStorage.UpdateGaugeElem(v.ID, *v.Value)
+			newStorage.UpdateGauge(v.ID, *v.Value)
 		}
 	}
 

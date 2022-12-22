@@ -43,12 +43,12 @@ func main() {
 
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", handlerData.SelectFromBody)
-		r.Get("/{metric_type}/{name}", handlerData.SelectHandler)
+		r.Get("/{metric_type}/{name}", handlerData.SelectFromURL)
 	})
 
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", handlerData.UpdateFromBody)
-		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateHandler)
+		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateFromURL)
 	})
 
 	logger.Fatal(http.ListenAndServe(cfg.Settings.Address, r))

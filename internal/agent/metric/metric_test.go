@@ -53,25 +53,26 @@ func TestMetrics_SendMetrics(t *testing.T) {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 
-					var elem serverMetric.MetricsExport
+					var elem serverMetric.MetricExport
 					err = json.Unmarshal(body, &elem)
 					if err != nil {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 					var value interface{}
+
 					switch elem.MType {
 					case serverMetric.CounterType:
-						mockStorage.UpdateCounterElem(elem.ID, *elem.Delta)
+						mockStorage.UpdateCounter(elem.ID, *elem.Delta)
 						value = *elem.Delta
 					case serverMetric.GaugeType:
-						mockStorage.UpdateGaugeElem(elem.ID, *elem.Value)
+						mockStorage.UpdateGauge(elem.ID, *elem.Value)
 						value = *elem.Value
 					default:
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 
-					resp, err := httpmock.NewJsonResponse(200,
-						serverMetric.MetricToJSON(elem.ID, elem.MType, value))
+					output := serverMetric.MetricToExport(elem.ID, elem.MType, value).Marshal()
+					resp, err := httpmock.NewJsonResponse(200, output)
 					if err != nil {
 						return httpmock.NewStringResponse(http.StatusBadGateway, ""), err
 					}
@@ -89,10 +90,10 @@ func TestMetrics_SendMetrics(t *testing.T) {
 			assert.Equal(len(storage.CounterMetrics)+len(storage.GaugeMetrics),
 				httpmock.GetTotalCallCount())
 			if len(storage.CounterMetrics) > 0 {
-				assert.Equal(storage.CounterMetrics, mockStorage.FindAll().CounterMetrics)
+				assert.Equal(storage.CounterMetrics, mockStorage.CounterMetrics)
 			}
 			if len(storage.GaugeMetrics) > 0 {
-				assert.Equal(storage.GaugeMetrics, mockStorage.FindAll().GaugeMetrics)
+				assert.Equal(storage.GaugeMetrics, mockStorage.GaugeMetrics)
 			}
 		})
 	}

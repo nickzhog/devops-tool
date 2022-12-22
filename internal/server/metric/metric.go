@@ -1,16 +1,18 @@
 package metric
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"sync"
 )
 
 type Storage interface {
-	UpdateGaugeElem(name string, value float64)
-	UpdateCounterElem(name string, value int64)
+	UpdateGauge(name string, value float64)
+	UpdateCounter(name string, value int64)
 	FindCounterByName(name string) (int64, bool)
 	FindGaugeByName(name string) (float64, bool)
-	FindAll() MemStorage
 	ExportToJSON() []byte
 }
 
@@ -36,13 +38,13 @@ func NewMemStorage() *MemStorage {
 	}
 }
 
-func (m *MemStorage) UpdateGaugeElem(name string, value float64) {
+func (m *MemStorage) UpdateGauge(name string, value float64) {
 	m.gaugeMutex.Lock()
 	defer m.gaugeMutex.Unlock()
 	m.GaugeMetrics[name] = value
 }
 
-func (m *MemStorage) UpdateCounterElem(name string, value int64) {
+func (m *MemStorage) UpdateCounter(name string, value int64) {
 	m.counterMutex.Lock()
 	defer m.counterMutex.Unlock()
 	m.CounterMetrics[name] += value
@@ -62,69 +64,64 @@ func (m *MemStorage) FindCounterByName(name string) (int64, bool) {
 	return v, ok
 }
 
-func (m MemStorage) FindAll() MemStorage {
-	m.gaugeMutex.RLock()
-	defer m.gaugeMutex.RUnlock()
-	m.counterMutex.RLock()
-	defer m.counterMutex.RUnlock()
-
-	return MemStorage{
-		GaugeMetrics:   m.GaugeMetrics,
-		CounterMetrics: m.CounterMetrics,
-	}
-}
-
-type MetricsExport struct {
+type MetricExport struct {
 	ID    string   `json:"id"`              // имя метрики
 	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	Hash  string   `json:"hash,omitempty"`  // значение хеш-функции
 }
 
-func MetricToJSON(name, metricType string, value interface{}) []byte {
-	m := make(map[string]interface{})
-	m["id"] = name
-	m["type"] = metricType
-	switch metricType {
+func (m MetricExport) Marshal() []byte {
+	data, _ := json.Marshal(m)
+	return data
+}
+
+func (m *MetricExport) GetHash(key []byte) []byte {
+	var data string
+	switch m.MType {
 	case GaugeType:
-		m["value"] = value
+		data = fmt.Sprintf("%s:%s:%f", m.ID, GaugeType, *m.Value)
 	case CounterType:
-		m["delta"] = value
+		data = fmt.Sprintf("%s:%s:%d", m.ID, CounterType, *m.Delta)
 	}
 
-	ans, _ := json.Marshal(m)
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(data))
+	return h.Sum(nil)
+}
 
-	return ans
+func MetricToExport(name, metricType string, value interface{}) MetricExport {
+	var metric MetricExport
+	metric.ID = name
+	metric.MType = metricType
+	switch metricType {
+	case CounterType:
+		val := value.(int64)
+		metric.Delta = &val
+	case GaugeType:
+		val := value.(float64)
+		metric.Value = &val
+	}
+	return metric
 }
 
 func (m *MemStorage) ExportToJSON() []byte {
-	encoded := "["
 	m.gaugeMutex.RLock()
 	defer m.gaugeMutex.RUnlock()
 	m.counterMutex.RLock()
 	defer m.counterMutex.RUnlock()
 
-	valueCount := len(m.CounterMetrics) + len(m.GaugeMetrics)
-	iterCount := 0
+	var metrics []MetricExport
 	for k, v := range m.GaugeMetrics {
-		iterCount++
-		encoded += string(MetricToJSON(k, GaugeType, v))
-		if valueCount == iterCount {
-			break
-		}
-		encoded += ",\n"
+		metrics = append(metrics, MetricToExport(k, GaugeType, v))
 	}
 
 	for k, v := range m.CounterMetrics {
-		iterCount++
-		encoded += string(MetricToJSON(k, CounterType, v))
-		if valueCount == iterCount {
-			break
-		}
-		encoded += ",\n"
+		metrics = append(metrics, MetricToExport(k, CounterType, v))
 	}
 
-	encoded += "]"
+	encoded, _ := json.Marshal(metrics)
 
-	return []byte(encoded)
+	return encoded
 }

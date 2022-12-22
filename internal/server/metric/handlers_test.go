@@ -13,11 +13,10 @@ import (
 func TestHandler_UpdateFromBody(t *testing.T) {
 	h := &Handler{
 		Data:   NewMemStorage(),
-		Tpl:    nil,
 		Logger: nil,
 	}
 
-	h.Data.UpdateCounterElem("good_counter", 9)
+	h.Data.UpdateCounter("good_counter", 9)
 
 	type request struct {
 		method string
@@ -37,11 +36,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "positive case #1",
 			request: request{
 				method: http.MethodPost,
-				data:   MetricToJSON("test", GaugeType, 15.1),
+				data:   MetricToExport("test", GaugeType, float64(15.1)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    MetricToJSON("test", GaugeType, 15.1),
+				response:    MetricToExport("test", GaugeType, float64(15.1)).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -61,11 +60,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "existed counter",
 			request: request{
 				method: http.MethodPost,
-				data:   MetricToJSON("good_counter", CounterType, 10),
+				data:   MetricToExport("good_counter", CounterType, int64(10)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    MetricToJSON("good_counter", CounterType, 19),
+				response:    MetricToExport("good_counter", CounterType, int64(19)).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -98,7 +97,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			assert.NoError(err)
 
-			assert.Equal(tt.want.response, resBody)
+			assert.Equal(string(tt.want.response), string(resBody))
 			assert.Equal(tt.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}

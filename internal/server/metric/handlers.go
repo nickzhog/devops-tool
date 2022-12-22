@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"github.com/nickzhog/practicum-metric/internal/server/config"
 	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
@@ -27,6 +28,7 @@ type Handler struct {
 	Data   Storage
 	Tpl    *template.Template
 	Logger *logging.Logger
+	Cfg    *config.Config
 }
 
 type ForTemplate struct {
@@ -35,29 +37,32 @@ type ForTemplate struct {
 }
 
 func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	memStorage := h.Data.FindAll()
+	data := h.Data.ExportToJSON()
 
-	gt := []ForTemplate{}
-	for k, v := range memStorage.GaugeMetrics {
-		gt = append(gt, ForTemplate{Key: k, Value: fmt.Sprintf("%f", v)})
-	}
+	var metrics []MetricExport
+	_ = json.Unmarshal(data, &metrics)
 
-	ct := []ForTemplate{}
-	for k, v := range memStorage.CounterMetrics {
-		ct = append(ct, ForTemplate{Key: k, Value: v})
+	gaugeData := []ForTemplate{}
+	counterData := []ForTemplate{}
+	for _, v := range metrics {
+		switch v.MType {
+		case CounterType:
+			counterData = append(counterData, ForTemplate{Key: v.ID, Value: v.Delta})
+		case GaugeType:
+			gaugeData = append(gaugeData, ForTemplate{Key: v.ID, Value: v.Value})
+		}
 	}
 
 	m := make(map[string]interface{})
 
-	m["GaugeValues"] = gt
+	m["GaugeValues"] = gaugeData
 
-	m["CounterValues"] = ct
+	m["CounterValues"] = counterData
 
 	if err := h.Tpl.ExecuteTemplate(w, "index.html", m); err != nil {
 		h.showError(w,
 			fmt.Sprintf("cant load page:%v", err),
 			http.StatusBadGateway)
-		return
 	}
 }
 
@@ -67,7 +72,7 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
-	var metric MetricsExport
+	var metric MetricExport
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
 		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
@@ -93,7 +98,7 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "%s", MetricToJSON(metric.ID, metric.MType, val))
+	w.Write(MetricToExport(metric.ID, metric.MType, val).Marshal())
 }
 
 func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +107,7 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
-	var metric MetricsExport
+	var metric MetricExport
 	err = json.Unmarshal(body, &metric)
 	if err != nil {
 		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
@@ -116,10 +121,10 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 
 	switch metric.MType {
 	case GaugeType:
-		h.Data.UpdateGaugeElem(metric.ID, *metric.Value)
+		h.Data.UpdateGauge(metric.ID, *metric.Value)
 		newVal, ok = h.Data.FindGaugeByName(metric.ID)
 	case CounterType:
-		h.Data.UpdateCounterElem(metric.ID, *metric.Delta)
+		h.Data.UpdateCounter(metric.ID, *metric.Delta)
 		newVal, ok = h.Data.FindCounterByName(metric.ID)
 	default:
 		h.showError(w, "wrong metric type", http.StatusBadRequest)
@@ -129,11 +134,12 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "something is wrong", http.StatusBadGateway)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "%s", MetricToJSON(metric.ID, metric.MType, newVal))
+	w.Write(MetricToExport(metric.ID, metric.MType, newVal).Marshal())
 }
 
-func (h *Handler) SelectHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if len(metricType) < 1 {
 		h.showError(w,
@@ -172,7 +178,7 @@ func (h *Handler) SelectHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "%v", val)
 }
 
-func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if len(metricType) < 1 {
 		h.showError(w,
@@ -200,7 +206,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest)
 			return
 		}
-		h.Data.UpdateGaugeElem(metricName, metricValueFloat)
+		h.Data.UpdateGauge(metricName, metricValueFloat)
 	case CounterType:
 		metricValueInt, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
@@ -209,7 +215,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest)
 			return
 		}
-		h.Data.UpdateCounterElem(metricName, metricValueInt)
+		h.Data.UpdateCounter(metricName, metricValueInt)
 	default:
 		h.showError(w,
 			"wrong element type",
@@ -217,6 +223,5 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.Logger.Tracef("updated: %v", MetricToJSON(metricName, metricType, metricValue))
 	fmt.Fprintf(w, "%s", metricValue)
 }

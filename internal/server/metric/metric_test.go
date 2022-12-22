@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMemStorage_UpdateCounterElem(t *testing.T) {
+func TestMemStorage_UpdateCounter(t *testing.T) {
 
 	storage := &MemStorage{
 		gaugeMutex:     &sync.RWMutex{},
@@ -38,7 +38,7 @@ func TestMemStorage_UpdateCounterElem(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage.UpdateCounterElem(tt.setName, tt.setValue)
+			storage.UpdateCounter(tt.setName, tt.setValue)
 			val, ok := storage.FindCounterByName(tt.setName)
 			assert := assert.New(t)
 			assert.Equal(tt.wantResult, val)
