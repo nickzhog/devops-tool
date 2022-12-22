@@ -13,20 +13,18 @@ type Config struct {
 		StoreInterval time.Duration `yaml:"store_interval" env-default:"300s" env:"STORE_INTERVAL,required"`
 		StoreFile     string        `yaml:"store_file" env-default:"/tmp/devops-metrics-db.json" env:"STORE_FILE,required"`
 		Restore       bool          `yaml:"restore" env-default:"true" env:"RESTORE,required"`
+		Key           string        `yaml:"key" env-default:"" env:"KEY"`
 	} `yaml:"settings"`
 }
 
 func GetConfig() *Config {
 	cfg := &Config{}
-	address := flag.String("a", ":8080", "address for server listen")
-	restore := flag.Bool("r", true, "restore latest values")
-	storeFile := flag.String("f", "/tmp/devops-metrics-db.json", "file for db")
+	flag.StringVar(&cfg.Settings.Address, "a", ":8080", "address for server listen")
+	flag.BoolVar(&cfg.Settings.Restore, "r", true, "restore latest values")
+	flag.StringVar(&cfg.Settings.StoreFile, "f", "/tmp/devops-metrics-db.json", "file for db")
+	flag.StringVar(&cfg.Settings.Key, "k", "", "encription key")
 	flag.DurationVar(&cfg.Settings.StoreInterval, "i", time.Second*300, "interval for db update")
 	flag.Parse()
-
-	cfg.Settings.Address = *address
-	cfg.Settings.Restore = *restore
-	cfg.Settings.StoreFile = *storeFile
 
 	cfgEnv := Config{}
 	err := env.Parse(&cfgEnv.Settings)

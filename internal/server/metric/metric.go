@@ -77,7 +77,7 @@ func (m MetricExport) Marshal() []byte {
 	return data
 }
 
-func (m *MetricExport) GetHash(key []byte) []byte {
+func (m *MetricExport) GetHash(key string) string {
 	var data string
 	switch m.MType {
 	case GaugeType:
@@ -86,9 +86,9 @@ func (m *MetricExport) GetHash(key []byte) []byte {
 		data = fmt.Sprintf("%s:%s:%d", m.ID, CounterType, *m.Delta)
 	}
 
-	h := hmac.New(sha256.New, key)
+	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(data))
-	return h.Sum(nil)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func MetricToExport(name, metricType string, value interface{}) MetricExport {

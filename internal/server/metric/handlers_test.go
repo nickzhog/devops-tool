@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/nickzhog/practicum-metric/internal/server/config"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,6 +15,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 	h := &Handler{
 		Data:   NewMemStorage(),
 		Logger: nil,
+		Cfg:    &config.Config{},
 	}
 
 	h.Data.UpdateCounter("good_counter", 9)

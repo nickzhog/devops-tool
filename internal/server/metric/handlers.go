@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"crypto/hmac"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -114,6 +115,15 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.Cfg.Settings.Key != "" {
+		if !hmac.Equal(
+			[]byte(metric.GetHash(h.Cfg.Settings.Key)),
+			[]byte(metric.Hash)) {
+			h.showError(w, "wrong hash", http.StatusBadRequest)
+			return
+		}
+	}
+
 	var (
 		newVal interface{}
 		ok     bool
@@ -134,9 +144,13 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "something is wrong", http.StatusBadGateway)
 		return
 	}
+	newMetric := MetricToExport(metric.ID, metric.MType, newVal)
+	if h.Cfg.Settings.Key != "" {
+		newMetric.Hash = string(newMetric.GetHash(h.Cfg.Settings.Key))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(MetricToExport(metric.ID, metric.MType, newVal).Marshal())
+	w.Write(newMetric.Marshal())
 }
 
 func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
