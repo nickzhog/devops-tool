@@ -22,44 +22,41 @@ const (
 )
 
 type MemStorage struct {
-	gaugeMutex   *sync.RWMutex
-	GaugeMetrics map[string]float64 `json:"gauge_metrics,omitempty"`
-
-	counterMutex   *sync.RWMutex
-	CounterMetrics map[string]int64 `json:"counter_metrics,omitempty"`
+	mutex          *sync.RWMutex
+	GaugeMetrics   map[string]float64 `json:"gauge_metrics,omitempty"`
+	CounterMetrics map[string]int64   `json:"counter_metrics,omitempty"`
 }
 
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
-		gaugeMutex:     &sync.RWMutex{},
+		mutex:          &sync.RWMutex{},
 		GaugeMetrics:   make(map[string]float64),
-		counterMutex:   &sync.RWMutex{},
 		CounterMetrics: make(map[string]int64),
 	}
 }
 
 func (m *MemStorage) UpdateGauge(name string, value float64) {
-	m.gaugeMutex.Lock()
-	defer m.gaugeMutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.GaugeMetrics[name] = value
 }
 
 func (m *MemStorage) UpdateCounter(name string, value int64) {
-	m.counterMutex.Lock()
-	defer m.counterMutex.Unlock()
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.CounterMetrics[name] += value
 }
 
 func (m *MemStorage) FindGaugeByName(name string) (float64, bool) {
-	m.gaugeMutex.RLock()
-	defer m.gaugeMutex.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	v, ok := m.GaugeMetrics[name]
 	return v, ok
 }
 
 func (m *MemStorage) FindCounterByName(name string) (int64, bool) {
-	m.counterMutex.RLock()
-	defer m.counterMutex.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 	v, ok := m.CounterMetrics[name]
 	return v, ok
 }
@@ -107,10 +104,8 @@ func MetricToExport(name, metricType string, value interface{}) MetricExport {
 }
 
 func (m *MemStorage) ExportToJSON() []byte {
-	m.gaugeMutex.RLock()
-	defer m.gaugeMutex.RUnlock()
-	m.counterMutex.RLock()
-	defer m.counterMutex.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	var metrics []MetricExport
 	for k, v := range m.GaugeMetrics {
