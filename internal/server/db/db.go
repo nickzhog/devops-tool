@@ -1,4 +1,4 @@
-package db
+package storageFile
 
 import (
 	"encoding/json"
@@ -10,14 +10,18 @@ import (
 	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
-func Connect(cfg *config.Config, logger *logging.Logger) metric.Storage {
+func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 	var storage metric.Storage = metric.NewMemStorage()
 	if cfg.Settings.StoreFile == "" {
 		return storage
 	}
 
 	if cfg.Settings.Restore {
-		storage = getFromFile(cfg.Settings.StoreFile, logger)
+		var err error
+		storage, err = getFromFile(cfg.Settings.StoreFile)
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 
 	file, err := os.OpenFile(cfg.Settings.StoreFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
@@ -39,19 +43,17 @@ func Connect(cfg *config.Config, logger *logging.Logger) metric.Storage {
 	return storage
 }
 
-func getFromFile(file string, logger *logging.Logger) *metric.MemStorage {
+func getFromFile(file string) (metric.Storage, error) {
 	newStorage := metric.NewMemStorage()
 
 	data, err := os.ReadFile(file)
 	if err != nil {
-		logger.Error(err)
-		return newStorage
+		return newStorage, err
 	}
 	var metrics []metric.MetricExport
 	err = json.Unmarshal(data, &metrics)
 	if err != nil {
-		logger.Error(err)
-		return newStorage
+		return newStorage, err
 	}
 
 	for _, v := range metrics {
@@ -62,8 +64,7 @@ func getFromFile(file string, logger *logging.Logger) *metric.MemStorage {
 			newStorage.UpdateGauge(v.ID, *v.Value)
 		}
 	}
-
-	return newStorage
+	return newStorage, err
 }
 
 func updateFile(storage metric.Storage, f *os.File) (err error) {
