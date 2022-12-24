@@ -1,24 +1,42 @@
 package main
 
 import (
-	"html/template"
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/nickzhog/practicum-metric/internal/server/compress"
 	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/db"
+	"github.com/nickzhog/practicum-metric/internal/server/handlers"
 	"github.com/nickzhog/practicum-metric/internal/server/metric"
+	"github.com/nickzhog/practicum-metric/internal/server/postgresql"
+	"github.com/nickzhog/practicum-metric/internal/server/storagedb"
+	"github.com/nickzhog/practicum-metric/internal/server/storagefile"
 	"github.com/nickzhog/practicum-metric/pkg/logging"
 )
 
 func main() {
 	cfg := config.GetConfig()
 	logger := logging.GetLogger()
-	logger.Traceln("config:", cfg)
+	logger.Tracef("config: %+v", cfg)
 
-	storage := db.Connect(cfg, logger)
+	handlerData := &handlers.Handler{
+		Logger: logger,
+		Cfg:    cfg,
+	}
+
+	if cfg.Settings.DatabaseDSN != "" {
+		var err error
+		handlerData.ClientDB, err = postgresql.NewClient(context.Background(), 2, *cfg)
+		if err != nil {
+			logger.Tracef("db error: %s", err.Error())
+		}
+		handlerData.MetricTable = metric.NewRepository(handlerData.ClientDB, logger)
+		handlerData.CacheData = storagedb.StartUpdates(handlerData.MetricTable, cfg, logger)
+	} else {
+		handlerData.CacheData = storagefile.StartUpdates(cfg, logger)
+	}
 
 	r := chi.NewRouter()
 
@@ -28,18 +46,8 @@ func main() {
 
 	r.Use(compress.GzipMiddleWare)
 
-	tpl, err := template.ParseGlob("pages/*.html")
-	if err != nil {
-		logger.Errorf("cant load pages: %s", err.Error())
-	}
-
-	handlerData := &metric.Handler{
-		Data:   storage,
-		Tpl:    tpl,
-		Logger: logger,
-	}
-
 	r.Get("/", handlerData.IndexHandler)
+	r.Get("/ping", handlerData.PingHandler)
 
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", handlerData.SelectFromBody)

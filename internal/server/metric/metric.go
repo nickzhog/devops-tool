@@ -14,6 +14,7 @@ type Storage interface {
 	FindCounterByName(name string) (int64, bool)
 	FindGaugeByName(name string) (float64, bool)
 	ExportToJSON() []byte
+	ImportFromJSON(data []byte) error
 }
 
 const (
@@ -119,4 +120,22 @@ func (m *MemStorage) ExportToJSON() []byte {
 	encoded, _ := json.Marshal(metrics)
 
 	return encoded
+}
+
+func (m *MemStorage) ImportFromJSON(data []byte) error {
+	var metrics []MetricExport
+	err := json.Unmarshal(data, &metrics)
+	if err != nil {
+		return err
+	}
+	for _, v := range metrics {
+		switch v.MType {
+		case CounterType:
+			m.UpdateCounter(v.ID, *v.Delta)
+		case GaugeType:
+			m.UpdateGauge(v.ID, *v.Value)
+		}
+	}
+
+	return nil
 }

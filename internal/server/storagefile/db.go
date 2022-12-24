@@ -1,7 +1,6 @@
-package storageFile
+package storagefile
 
 import (
-	"encoding/json"
 	"os"
 	"time"
 
@@ -32,11 +31,11 @@ func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 
 	go func() {
 		for {
-			time.Sleep(cfg.Settings.StoreInterval)
 			err = updateFile(storage, file)
 			if err != nil {
 				logger.Error(err)
 			}
+			time.Sleep(cfg.Settings.StoreInterval)
 		}
 	}()
 
@@ -44,26 +43,14 @@ func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 }
 
 func getFromFile(file string) (metric.Storage, error) {
-	newStorage := metric.NewMemStorage()
-
+	var newStorage metric.Storage = metric.NewMemStorage()
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return newStorage, err
 	}
-	var metrics []metric.MetricExport
-	err = json.Unmarshal(data, &metrics)
-	if err != nil {
-		return newStorage, err
-	}
 
-	for _, v := range metrics {
-		switch v.MType {
-		case metric.CounterType:
-			newStorage.UpdateCounter(v.ID, *v.Delta)
-		case metric.GaugeType:
-			newStorage.UpdateGauge(v.ID, *v.Value)
-		}
-	}
+	err = newStorage.ImportFromJSON(data)
+
 	return newStorage, err
 }
 

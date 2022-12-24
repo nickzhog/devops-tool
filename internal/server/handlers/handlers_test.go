@@ -1,4 +1,4 @@
-package metric
+package handlers
 
 import (
 	"bytes"
@@ -8,17 +8,18 @@ import (
 	"testing"
 
 	"github.com/nickzhog/practicum-metric/internal/server/config"
+	"github.com/nickzhog/practicum-metric/internal/server/metric"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHandler_UpdateFromBody(t *testing.T) {
 	h := &Handler{
-		Data:   NewMemStorage(),
-		Logger: nil,
-		Cfg:    &config.Config{},
+		CacheData: metric.NewMemStorage(),
+		Logger:    nil,
+		Cfg:       &config.Config{},
 	}
 
-	h.Data.UpdateCounter("good_counter", 9)
+	h.CacheData.UpdateCounter("good_counter", 9)
 
 	type request struct {
 		method string
@@ -38,11 +39,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "positive case #1",
 			request: request{
 				method: http.MethodPost,
-				data:   MetricToExport("test", GaugeType, float64(15.1)).Marshal(),
+				data:   metric.MetricToExport("test", metric.GaugeType, float64(15.1)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    MetricToExport("test", GaugeType, float64(15.1)).Marshal(),
+				response:    metric.MetricToExport("test", metric.GaugeType, float64(15.1)).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -62,11 +63,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "existed counter",
 			request: request{
 				method: http.MethodPost,
-				data:   MetricToExport("good_counter", CounterType, int64(10)).Marshal(),
+				data:   metric.MetricToExport("good_counter", metric.CounterType, int64(10)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    MetricToExport("good_counter", CounterType, int64(19)).Marshal(),
+				response:    metric.MetricToExport("good_counter", metric.CounterType, int64(19)).Marshal(),
 				contentType: "application/json",
 			},
 		},

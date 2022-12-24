@@ -62,12 +62,15 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, []byte(``), http.MethodGet)
+		sendRequest(url, []byte(``), http.MethodPost)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		metric := metric.MetricToExport(k, metric.GaugeType, v)
+		if cfg.Settings.Key != "" {
+			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
+		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
 	}
@@ -75,12 +78,15 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, []byte(``), http.MethodGet)
+		sendRequest(url, []byte(``), http.MethodPost)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
 		metric := metric.MetricToExport(k, metric.CounterType, v)
+		if cfg.Settings.Key != "" {
+			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
+		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
 	}
