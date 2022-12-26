@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/nickzhog/practicum-metric/internal/server/postgresql"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 type Repository interface {
 	CreateTable(ctx context.Context)
-	Update(ctx context.Context, metric MetricExport) (err error)
+	Upsert(ctx context.Context, metric MetricExport) (err error)
 	FindByName(ctx context.Context, mtype, name string) (MetricExport, error)
 	FindAll(ctx context.Context) ([]MetricExport, error)
 }
@@ -34,7 +34,7 @@ func (r *repository) CreateTable(ctx context.Context) {
 			id text not null, 
 			type text not null,
 			value double precision,
-			delta integer
+			delta BIGINT
 		);
 	`
 	_, err := r.client.Exec(ctx, q)
@@ -92,8 +92,11 @@ func (r *repository) FindAll(ctx context.Context) ([]MetricExport, error) {
 func (r *repository) FindByName(ctx context.Context, mtype, name string) (MetricExport, error) {
 	q := `
 		SELECT
-		 delta, value 
-		FROM public.metrics WHERE type = $1 and id = $2;
+		 	delta, value 
+		FROM 
+			public.metrics 
+		WHERE 
+			type = $1 and id = $2;
 	`
 
 	var delta sql.NullInt64
@@ -123,24 +126,26 @@ func (r *repository) FindByName(ctx context.Context, mtype, name string) (Metric
 	return m, nil
 }
 
-func (r *repository) Update(ctx context.Context, metric MetricExport) (err error) {
+func (r *repository) Upsert(ctx context.Context, metric MetricExport) (err error) {
 	q := `
-	UPDATE metrics SET
-	id=$1, type=$2, value=$3, delta=$4  
-	WHERE id=$1 and type=$2;
+	UPDATE metrics 
+	SET
+		id=$1, type=$2, value=$3, delta=$4  
+	WHERE 
+		id=$1 and type=$2;
 	`
 	commandTag, _ := r.client.Exec(ctx, q,
 		metric.ID, metric.MType, metric.Value, metric.Delta)
 
-	// if err != nil {
-	// 	r.logger.Trace(err)
-	// }
+	if err != nil {
+		r.logger.Trace(err)
+	}
 
 	if commandTag.RowsAffected() != 1 {
 		q = `
 		INSERT INTO metrics (id, type, value, delta)
 		SELECT $1, $2, $3, $4 
-		WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE id=$1);
+		WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE id=$1 and type=$2);
 		`
 		_, err = r.client.Exec(ctx, q,
 			metric.ID, metric.MType, metric.Value, metric.Delta)

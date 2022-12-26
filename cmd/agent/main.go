@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nickzhog/practicum-metric/internal/agent/config"
-	"github.com/nickzhog/practicum-metric/internal/agent/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/agent/config"
+	"github.com/nickzhog/devops-tool/internal/agent/metric"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 func main() {

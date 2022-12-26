@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
@@ -36,7 +36,7 @@ type Handler struct {
 
 	// Tpl    *template.Template
 
-	ClientDB    *pgxpool.Pool
+	ClientDB    postgresql.Client
 	MetricTable metric.Repository
 }
 
@@ -189,14 +189,13 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "wrong metric type", http.StatusBadRequest)
 		return
 	}
+
 	if !ok {
 		h.showError(w, "something is wrong", http.StatusBadGateway)
 		return
 	}
+
 	newMetric := metric.MetricToExport(metricElem.ID, metricElem.MType, newVal)
-	if h.Cfg.Settings.Key != "" {
-		newMetric.Hash = string(newMetric.GetHash(h.Cfg.Settings.Key))
-	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(newMetric.Marshal())
@@ -296,4 +295,51 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "%v", newVal)
+}
+
+func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.showError(w, "cant get body", http.StatusBadRequest)
+		return
+	}
+	var metrics []metric.MetricExport
+	err = json.Unmarshal(body, &metrics)
+	if err != nil {
+		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+		return
+	}
+
+	if h.Cfg.Settings.Key != "" {
+		for _, v := range metrics {
+			if !hmac.Equal(
+				[]byte(v.GetHash(h.Cfg.Settings.Key)),
+				[]byte(v.Hash)) {
+				h.showError(w, "wrong hash for "+v.ID, http.StatusBadRequest)
+				return
+			}
+		}
+	}
+
+	var ok bool
+
+	for _, v := range metrics {
+		switch v.MType {
+		case metric.GaugeType:
+			h.CacheData.UpdateGauge(v.ID, *v.Value)
+			_, ok = h.CacheData.FindGaugeByName(v.ID)
+		case metric.CounterType:
+			h.CacheData.UpdateCounter(v.ID, *v.Delta)
+			_, ok = h.CacheData.FindCounterByName(v.ID)
+		default:
+			h.showError(w, "wrong metric type", http.StatusBadRequest)
+			return
+		}
+		if !ok {
+			h.showError(w, "something is wrong", http.StatusBadGateway)
+			return
+		}
+	}
+
+	w.Write(nil)
 }

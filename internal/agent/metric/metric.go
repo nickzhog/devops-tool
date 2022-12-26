@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nickzhog/practicum-metric/internal/agent/config"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/agent/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 type Agent struct {
@@ -59,6 +59,9 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	var err error
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
+
+	var metrics []metric.MetricExport
+
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
@@ -73,6 +76,8 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
+
+		metrics = append(metrics, metric)
 	}
 
 	for k, v := range a.CounterMetrics {
@@ -89,7 +94,21 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
-	}
 
+		metrics = append(metrics, metric)
+	}
 	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %v", cfg.Settings.Address, err, string(answer))
+
+	if len(metrics) > 0 {
+		data, err := json.Marshal(metrics)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
+		url := fmt.Sprintf("%s/updates/", cfg.Settings.Address)
+		_, err = sendRequest(url, data, http.MethodPost)
+		if err != nil {
+			logger.Error(err)
+		}
+	}
 }

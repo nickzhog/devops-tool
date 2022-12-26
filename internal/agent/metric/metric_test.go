@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/jarcoal/httpmock"
-	"github.com/nickzhog/practicum-metric/internal/agent/config"
-	serverMetric "github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/agent/config"
+	serverMetric "github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/stretchr/testify/assert"
 )
 

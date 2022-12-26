@@ -6,14 +6,14 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/nickzhog/practicum-metric/internal/server/compress"
-	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/handlers"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/internal/server/postgresql"
-	"github.com/nickzhog/practicum-metric/internal/server/storagedb"
-	"github.com/nickzhog/practicum-metric/internal/server/storagefile"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/compress"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/handlers"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/internal/server/storagedb"
+	"github.com/nickzhog/devops-tool/internal/server/storagefile"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 func main() {
@@ -58,6 +58,8 @@ func main() {
 		r.Post("/", handlerData.UpdateFromBody)
 		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateFromURL)
 	})
+
+	r.Post("/updates/", handlerData.UpdateMany)
 
 	logger.Fatal(http.ListenAndServe(cfg.Settings.Address, r))
 }

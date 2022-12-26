@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/nickzhog/practicum-metric/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/config"
 )
 
 type Client interface {
@@ -15,9 +15,10 @@ type Client interface {
 	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 	Begin(ctx context.Context) (pgx.Tx, error)
+	Ping(ctx context.Context) error
 }
 
-func NewClient(ctx context.Context, maxAttempts int, cfg config.Config) (pool *pgxpool.Pool, err error) {
+func NewClient(ctx context.Context, maxAttempts int, cfg config.Config) (pool Client, err error) {
 	delay := 5 * time.Second
 	for maxAttempts > 0 {
 		if err = func() error {

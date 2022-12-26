@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 func StartUpdates(rep metric.Repository, cfg *config.Config, logger *logging.Logger) metric.Storage {
@@ -58,7 +58,7 @@ func updateDB(rep metric.Repository, storage metric.Storage) error {
 	}
 
 	for _, v := range metrics {
-		err = rep.Update(context.Background(), v)
+		err = rep.Upsert(context.Background(), v)
 		if err != nil {
 			return err
 		}

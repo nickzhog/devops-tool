@@ -4,9 +4,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
-	"github.com/nickzhog/practicum-metric/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {

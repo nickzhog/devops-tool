@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nickzhog/practicum-metric/internal/server/config"
-	"github.com/nickzhog/practicum-metric/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/stretchr/testify/assert"
 )
 
