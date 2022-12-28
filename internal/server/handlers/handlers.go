@@ -34,8 +34,6 @@ type Handler struct {
 	Logger   *logging.Logger
 	Cfg      *config.Config
 	ClientDB postgresql.Client
-
-	// Tpl    *template.Template
 }
 
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
@@ -102,12 +100,6 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	templ.Execute(w, m)
-	// if err := h.Tpl.ExecuteTemplate(w, "index.html", m); err != nil {
-	// 	h.showError(w,
-	// 		fmt.Sprintf("cant load page:%v", err),
-	// 		http.StatusBadGateway)
-	// 	return
-	// }
 }
 
 func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
@@ -262,14 +254,14 @@ func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 		h.showError(w, "cant get body", http.StatusBadRequest)
 		return
 	}
-	var metrics []metric.Metric
-	err = json.Unmarshal(body, &metrics)
-	if err != nil {
-		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
-		return
-	}
 
 	if h.Cfg.Settings.Key != "" {
+		var metrics []metric.Metric
+		err = json.Unmarshal(body, &metrics)
+		if err != nil {
+			h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+			return
+		}
 		for _, v := range metrics {
 			if !hmac.Equal(
 				[]byte(v.GetHash(h.Cfg.Settings.Key)),
@@ -280,12 +272,10 @@ func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, v := range metrics {
-		err = h.Data.UpsertMetric(r.Context(), &v)
-		if err != nil {
-			h.showError(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+	err = h.Data.ImportFromJSON(r.Context(), body)
+	if err != nil {
+		h.showError(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.Write(nil)
