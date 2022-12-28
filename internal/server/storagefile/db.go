@@ -11,7 +11,7 @@ import (
 )
 
 func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
-	var storage metric.Storage = metric.NewMemStorage()
+	storage := metric.NewMemStorage()
 	if cfg.Settings.StoreFile == "" {
 		return storage
 	}
@@ -44,7 +44,7 @@ func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 }
 
 func getFromFile(file string) (metric.Storage, error) {
-	var newStorage metric.Storage = metric.NewMemStorage()
+	newStorage := metric.NewMemStorage()
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return newStorage, err

@@ -24,11 +24,8 @@ func main() {
 	go func() {
 		defer wg.Done()
 		t := time.NewTicker(cfg.Settings.PollInterval)
-		for {
-			select {
-			case <-t.C:
-				agent.UpdateMetrics()
-			}
+		for range t.C {
+			agent.UpdateMetrics()
 		}
 	}()
 
@@ -36,11 +33,8 @@ func main() {
 	go func() {
 		defer wg.Done()
 		t := time.NewTicker(cfg.Settings.ReportInterval)
-		for {
-			select {
-			case <-t.C:
-				agent.SendMetrics(cfg, logger)
-			}
+		for range t.C {
+			agent.SendMetrics(cfg, logger)
 		}
 	}()
 

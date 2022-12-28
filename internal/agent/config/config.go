@@ -24,13 +24,6 @@ func GetConfig() *Config {
 
 	flag.Parse()
 
-	// cfgEnv := Config{}
-	// err := env.Parse(&cfgEnv.Settings)
-	// if err == nil {
-	// 	cfg.Settings = cfgEnv.Settings
-	// 	return
-	// }
-
 	addr, ok := os.LookupEnv("ADDRESS")
 	if ok {
 		cfg.Settings.Address = addr
@@ -50,13 +43,6 @@ func GetConfig() *Config {
 	if ok {
 		cfg.Settings.Key = key
 	}
-	// if err := cleanenv.ReadConfig("config.yml", cfg); err != nil {
-	// 	_, _ = cleanenv.GetDescription(cfg, nil)
-	// 	// log.Fatal("load config err:", err)
-	// 	cfg.Settings.PollInterval = time.Second * 2
-	// 	cfg.Settings.ReportInterval = time.Second * 10
-	// 	cfg.Settings.Address = "http://127.0.0.1:8080"
-	// }
 
 	return cfg
 }

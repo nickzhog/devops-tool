@@ -22,7 +22,7 @@ type Agent struct {
 
 func NewAgent() *Agent {
 	return &Agent{
-		mutex:          &sync.RWMutex{},
+		mutex:          new(sync.RWMutex),
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}

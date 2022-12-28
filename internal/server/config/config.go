@@ -27,13 +27,6 @@ func GetConfig() *Config {
 	flag.StringVar(&cfg.Settings.Key, "k", "", "encription key")
 	flag.Parse()
 
-	// cfgEnv := Config{}
-	// err := env.Parse(&cfgEnv.Settings)
-	// if err == nil {
-	// 	cfg.Settings = cfgEnv.Settings
-	// 	return
-	// }
-
 	dsn, ok := os.LookupEnv("DATABASE_DSN")
 	if ok {
 		cfg.Settings.DatabaseDSN = dsn
@@ -67,11 +60,6 @@ func GetConfig() *Config {
 	if ok {
 		cfg.Settings.Key = key
 	}
-
-	// if err := cleanenv.ReadConfig("config.yml", cfg); err != nil {
-	// 	_, _ = cleanenv.GetDescription(cfg, nil)
-	// 		log.Fatal("load config err:", err)
-	// }
 
 	return cfg
 }
