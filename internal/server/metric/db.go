@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/nickzhog/devops-tool/internal/server/postgresql"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
@@ -22,7 +22,8 @@ func NewRepository(client postgresql.Client, logger *logging.Logger) Storage {
 		id text not null, 
 		type text not null,
 		value double precision,
-		delta BIGINT
+		delta BIGINT,
+		PRIMARY KEY (id, type)
 	);`
 	_, err := client.Exec(context.TODO(), q)
 	if err != nil {
@@ -73,38 +74,20 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (Metric
 }
 
 func (r *repository) UpsertMetric(ctx context.Context, metric *Metric) (err error) {
-	if metric.MType == CounterType {
-		oldMetric, exist := r.FindMetric(ctx, metric.ID, metric.MType)
-		if exist {
-			delta := *metric.Delta + *oldMetric.Delta
-			metric.Delta = &delta
-		}
-	} else if metric.MType != GaugeType {
-		return errors.New("wrong metric type")
-	}
-
 	q := `
-	UPDATE metrics 
-	SET
-		id=$1, type=$2, value=$3, delta=$4  
-	WHERE 
-		id=$1 and type=$2;
+	INSERT 
+	INTO metrics
+		(id, type, value, delta) 
+	VALUES 
+		($1, $2, $3, $4)
+	ON CONFLICT (id,type) DO UPDATE 
+	SET value=$3, delta=metrics.delta+$4;
 	`
-	commandTag, err := r.client.Exec(ctx, q,
+	_, err = r.client.Exec(ctx, q,
 		metric.ID, metric.MType, metric.Value, metric.Delta)
 
 	if err != nil {
 		r.logger.Trace(err)
-	}
-
-	if commandTag.RowsAffected() != 1 {
-		q = `
-		INSERT INTO metrics (id, type, value, delta)
-		SELECT $1, $2, $3, $4 
-		WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE id=$1 and type=$2);
-		`
-		_, err = r.client.Exec(ctx, q,
-			metric.ID, metric.MType, metric.Value, metric.Delta)
 	}
 
 	return
@@ -117,15 +100,34 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 		return err
 	}
 
-	// todo: transaction
+	tx, err := r.client.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	q := `
+	INSERT 
+	INTO metrics
+		(id, type, value, delta) 
+	VALUES 
+		($1, $2, $3, $4)
+	ON CONFLICT (id,type) DO UPDATE 
+	SET value=$3, delta=metrics.delta+$4;
+	`
+
+	batch := &pgx.Batch{}
 	for _, v := range metrics {
-		err = r.UpsertMetric(ctx, &v)
-		if err != nil {
-			return err
-		}
+		batch.Queue(q, v.ID, v.MType, v.Value, v.Delta)
 	}
 
-	return nil
+	result := tx.Conn().SendBatch(ctx, batch)
+	err = result.Close()
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
