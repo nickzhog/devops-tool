@@ -49,6 +49,7 @@ func GetConfig() *Config {
 			cfg.Settings.StoreInterval = dur
 		}
 	}
+
 	restoreEnv, ok := os.LookupEnv("RESTORE")
 	if ok {
 		switch restoreEnv {

@@ -60,7 +60,7 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
-	var metrics []metric.MetricExport
+	var metrics []metric.Metric
 
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
@@ -70,7 +70,7 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		metric := metric.MetricToExport(k, metric.GaugeType, v)
+		metric := metric.NewMetric(k, metric.GaugeType, v)
 		if cfg.Settings.Key != "" {
 			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
 		}
@@ -88,7 +88,7 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		metric := metric.MetricToExport(k, metric.CounterType, v)
+		metric := metric.NewMetric(k, metric.CounterType, v)
 		if cfg.Settings.Key != "" {
 			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
 		}

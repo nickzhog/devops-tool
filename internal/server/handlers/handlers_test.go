@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,13 +15,17 @@ import (
 
 func TestHandler_UpdateFromBody(t *testing.T) {
 	h := &Handler{
-		CacheData: metric.NewMemStorage(),
-		Logger:    nil,
-		Cfg:       &config.Config{},
+		Data:   metric.NewMemStorage(),
+		Logger: nil,
+		Cfg:    &config.Config{},
 	}
+	h.Cfg.Settings.Key = ""
 
-	h.CacheData.UpdateCounter("good_counter", 9)
-
+	metricElem := metric.NewMetric("good_counter", metric.CounterType, int64(9))
+	err := h.Data.UpsertMetric(context.Background(), &metricElem)
+	if err != nil {
+		panic(err)
+	}
 	type request struct {
 		method string
 		data   []byte
@@ -39,11 +44,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "positive case #1",
 			request: request{
 				method: http.MethodPost,
-				data:   metric.MetricToExport("test", metric.GaugeType, float64(15.1)).Marshal(),
+				data:   metric.NewMetric("test", metric.GaugeType, float64(15.1)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.MetricToExport("test", metric.GaugeType, float64(15.1)).Marshal(),
+				response:    metric.NewMetric("test", metric.GaugeType, float64(15.1)).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -63,11 +68,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			name: "existed counter",
 			request: request{
 				method: http.MethodPost,
-				data:   metric.MetricToExport("good_counter", metric.CounterType, int64(10)).Marshal(),
+				data:   metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.MetricToExport("good_counter", metric.CounterType, int64(19)).Marshal(),
+				response:    metric.NewMetric("good_counter", metric.CounterType, int64(19)).Marshal(),
 				contentType: "application/json",
 			},
 		},

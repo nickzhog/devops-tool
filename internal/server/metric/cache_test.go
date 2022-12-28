@@ -1,15 +1,15 @@
 package metric
 
 import (
+	"context"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMemStorage_UpdateCounter(t *testing.T) {
-
-	storage := &MemStorage{
+func TestMemStorage_Upsert(t *testing.T) {
+	storage := &memStorage{
 		mutex:          &sync.RWMutex{},
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
@@ -35,12 +35,14 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 			wantResult: 10,
 		},
 	}
+	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage.UpdateCounter(tt.setName, tt.setValue)
-			val, ok := storage.FindCounterByName(tt.setName)
+			metricElem := NewMetric(tt.setName, CounterType, tt.setValue)
+			storage.UpsertMetric(ctx, &metricElem)
+			metricElem, ok := storage.FindMetric(ctx, tt.setName, CounterType)
 			assert := assert.New(t)
-			assert.Equal(tt.wantResult, val)
+			assert.Equal(tt.wantResult, *metricElem.Delta)
 			assert.True(ok)
 		})
 	}

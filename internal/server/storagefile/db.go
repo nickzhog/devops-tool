@@ -1,6 +1,7 @@
 package storagefile
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -49,7 +50,7 @@ func getFromFile(file string) (metric.Storage, error) {
 		return newStorage, err
 	}
 
-	err = newStorage.ImportFromJSON(data)
+	err = newStorage.ImportFromJSON(context.TODO(), data)
 
 	return newStorage, err
 }
@@ -63,7 +64,11 @@ func updateFile(storage metric.Storage, f *os.File) (err error) {
 	if err != nil {
 		return
 	}
-	_, err = f.Write(storage.ExportToJSON())
+	data, err := storage.ExportToJSON(context.TODO())
+	if err != nil {
+		return
+	}
+	_, err = f.Write(data)
 
 	return
 }

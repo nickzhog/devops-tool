@@ -11,7 +11,6 @@ import (
 	"github.com/nickzhog/devops-tool/internal/server/handlers"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/internal/server/postgresql"
-	"github.com/nickzhog/devops-tool/internal/server/storagedb"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
@@ -32,10 +31,9 @@ func main() {
 		if err != nil {
 			logger.Tracef("db error: %s", err.Error())
 		}
-		handlerData.MetricTable = metric.NewRepository(handlerData.ClientDB, logger)
-		handlerData.CacheData = storagedb.StartUpdates(handlerData.MetricTable, cfg, logger)
+		handlerData.Data = metric.NewRepository(handlerData.ClientDB, logger)
 	} else {
-		handlerData.CacheData = storagefile.StartUpdates(cfg, logger)
+		handlerData.Data = storagefile.StartUpdates(cfg, logger)
 	}
 
 	r := chi.NewRouter()
