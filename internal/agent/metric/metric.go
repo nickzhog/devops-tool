@@ -57,10 +57,9 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	var url string
 	var answer []byte
 	var err error
+	jsonData := a.ExportToJSON()
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
-
-	var metrics []metric.Metric
 
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
@@ -76,8 +75,6 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
-
-		metrics = append(metrics, metric)
 	}
 
 	for k, v := range a.CounterMetrics {
@@ -94,21 +91,32 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		}
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
-
-		metrics = append(metrics, metric)
 	}
 	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %v", cfg.Settings.Address, err, string(answer))
 
-	if len(metrics) > 0 {
-		data, err := json.Marshal(metrics)
-		if err != nil {
-			logger.Error(err)
-			return
-		}
+	if len(jsonData) > 0 {
 		url := fmt.Sprintf("%s/updates/", cfg.Settings.Address)
-		_, err = sendRequest(url, data, http.MethodPost)
+		_, err = sendRequest(url, jsonData, http.MethodPost)
 		if err != nil {
 			logger.Error(err)
 		}
 	}
+}
+
+func (a *Agent) ExportToJSON() []byte {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+
+	metrics := make([]metric.Metric, 0)
+	for k, v := range a.GaugeMetrics {
+		metrics = append(metrics, metric.NewMetric(k, metric.GaugeType, v))
+	}
+	for k, v := range a.CounterMetrics {
+		metrics = append(metrics, metric.NewMetric(k, metric.CounterType, v))
+	}
+	ans, err := json.Marshal(metrics)
+	if err != nil {
+		return []byte(``)
+	}
+	return ans
 }
