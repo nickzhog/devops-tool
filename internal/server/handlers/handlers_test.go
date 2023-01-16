@@ -24,7 +24,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 	metricElem := metric.NewMetric("good_counter", metric.CounterType, int64(9))
 	err := h.Data.UpsertMetric(context.Background(), &metricElem)
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	type request struct {
 		method string
@@ -105,7 +105,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			resBody, err := io.ReadAll(res.Body)
 			assert.NoError(err)
 
-			assert.Equal(string(tt.want.response), string(resBody))
+			assert.JSONEq(string(tt.want.response), string(resBody))
 			assert.Equal(tt.want.contentType, res.Header.Get("Content-Type"))
 		})
 	}

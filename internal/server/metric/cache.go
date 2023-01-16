@@ -15,7 +15,7 @@ type memStorage struct {
 
 func NewMemStorage() Storage {
 	return &memStorage{
-		mutex:          &sync.RWMutex{},
+		mutex:          new(sync.RWMutex),
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}
