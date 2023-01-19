@@ -12,6 +12,7 @@ import (
 	"github.com/nickzhog/devops-tool/internal/agent/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/shirou/gopsutil/mem"
 )
 
 type Agent struct {
@@ -49,6 +50,13 @@ func (a *Agent) UpdateMetrics() {
 		a.GaugeMetrics[typeOfS.Field(i).Name] = floatValue
 	}
 	a.GaugeMetrics["RandomValue"] = float64(rand.Int63n(1000))
+
+	//gopsutil
+	mem, _ := mem.VirtualMemory()
+
+	a.GaugeMetrics["CPUutilization1"] = float64(mem.UsedPercent)
+	a.GaugeMetrics["TotalMemory"] = float64(mem.Total)
+	a.GaugeMetrics["FreeMemory"] = float64(mem.Free)
 
 	a.CounterMetrics["PollCount"]++
 }
