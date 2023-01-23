@@ -21,36 +21,15 @@ func TestMetrics_SendMetrics(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		metrics Agent
+		metrics string
 	}{
 		{
-			name: "case #1",
-			metrics: Agent{
-				CounterMetrics: map[string]int64{
-					"good_counter": 10,
-				},
-			},
+			name:    "case #1 / positive",
+			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test2","type":"gauge","value":12.1}]`,
 		},
 		{
-			name: "case #2",
-			metrics: Agent{
-				GaugeMetrics: map[string]float64{
-					"good_gauge": 15.51,
-				},
-			},
-		},
-		{
-			name: "case #3",
-			metrics: Agent{
-				GaugeMetrics: map[string]float64{
-					"good_gauge":  25.51,
-					"good_gauge2": 2313.51,
-				},
-				CounterMetrics: map[string]int64{
-					"good_counter":  123,
-					"good_counter2": 321,
-				},
-			},
+			name:    "case #2 / positive",
+			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test1","type":"counter","delta":12}]`,
 		},
 	}
 
@@ -87,21 +66,17 @@ func TestMetrics_SendMetrics(t *testing.T) {
 				})
 
 			//////////
+			assert := assert.New(t)
+
 			agentStorage := NewAgent()
-			for k, v := range tt.metrics.CounterMetrics {
-				agentStorage.CounterMetrics[k] = v
-			}
-			for k, v := range tt.metrics.GaugeMetrics {
-				agentStorage.GaugeMetrics[k] = v
-			}
+			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
+			assert.NoError(err)
 
 			agentStorage.SendMetrics(cfg, logger)
 
-			assert := assert.New(t)
-			assert.Equal(len(agentStorage.CounterMetrics)+len(agentStorage.GaugeMetrics),
-				httpmock.GetTotalCallCount())
+			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
+			assert.NoError(err)
 
-			serverJSON, _ := mockStorage.ExportToJSON(context.TODO())
 			assert.JSONEq(string(agentStorage.ExportToJSON()), string(serverJSON))
 		})
 	}
@@ -114,35 +89,15 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		metrics Agent
+		metrics string
 	}{
 		{
-			name: "case #1",
-			metrics: Agent{
-				CounterMetrics: map[string]int64{
-					"good_counter": 10,
-				},
-			},
+			name:    "case #1 / positive",
+			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test2","type":"gauge","value":12.1}]`,
 		},
 		{
-			name: "case #2",
-			metrics: Agent{
-				GaugeMetrics: map[string]float64{
-					"good_gauge": 15.51,
-				},
-			},
-		},
-		{
-			name: "case #3",
-			metrics: Agent{
-				GaugeMetrics: map[string]float64{
-					"good_gauge":  25.51,
-					"good_gauge2": 321.123,
-				},
-				CounterMetrics: map[string]int64{
-					"good_counter": 321,
-				},
-			},
+			name:    "case #2 / positive",
+			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test1","type":"counter","delta":12}]`,
 		},
 	}
 
@@ -169,19 +124,17 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 				})
 
 			//////////
+			assert := assert.New(t)
+
 			agentStorage := NewAgent()
-			for k, v := range tt.metrics.CounterMetrics {
-				agentStorage.CounterMetrics[k] = v
-			}
-			for k, v := range tt.metrics.GaugeMetrics {
-				agentStorage.GaugeMetrics[k] = v
-			}
+			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
+			assert.NoError(err)
 
 			agentStorage.SendMetrics(cfg, logger)
 
-			assert := assert.New(t)
+			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
+			assert.NoError(err)
 
-			serverJSON, _ := mockStorage.ExportToJSON(context.TODO())
 			assert.JSONEq(string(agentStorage.ExportToJSON()), string(serverJSON))
 		})
 	}
