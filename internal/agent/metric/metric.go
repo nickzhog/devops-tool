@@ -15,21 +15,28 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-type Agent struct {
+type Agent interface {
+	UpdateMetrics()
+	SendMetrics(cfg *config.Config, logger *logging.Logger)
+	ExportToJSON() []byte
+	ImportFromJSON(data []byte) error
+}
+
+type agent struct {
 	mutex          *sync.RWMutex
 	GaugeMetrics   map[string]float64 `json:"gauge_metrics,omitempty"`
 	CounterMetrics map[string]int64   `json:"counter_metrics,omitempty"`
 }
 
-func NewAgent() *Agent {
-	return &Agent{
+func NewAgent() Agent {
+	return &agent{
 		mutex:          new(sync.RWMutex),
 		GaugeMetrics:   make(map[string]float64),
 		CounterMetrics: make(map[string]int64),
 	}
 }
 
-func (a *Agent) UpdateMetrics() {
+func (a *agent) UpdateMetrics() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -61,7 +68,7 @@ func (a *Agent) UpdateMetrics() {
 	a.CounterMetrics["PollCount"]++
 }
 
-func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
+func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	var url string
 	var answer []byte
 	var err error
@@ -111,7 +118,28 @@ func (a *Agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	}
 }
 
-func (a *Agent) ExportToJSON() []byte {
+func (a *agent) ImportFromJSON(data []byte) error {
+	var metrics []metric.Metric
+	err := json.Unmarshal(data, &metrics)
+	if err != nil {
+		return err
+	}
+
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	for _, v := range metrics {
+		switch v.MType {
+		case metric.CounterType:
+			a.CounterMetrics[v.ID] = *v.Delta
+		case metric.GaugeType:
+			a.GaugeMetrics[v.ID] = *v.Value
+		}
+	}
+
+	return nil
+}
+
+func (a *agent) ExportToJSON() []byte {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
