@@ -2,16 +2,17 @@ package config
 
 import (
 	"flag"
-	"os"
 	"time"
+
+	"github.com/caarlos0/env"
 )
 
 type Config struct {
 	Settings struct {
-		PollInterval   time.Duration `yaml:"poll_interval" env-default:"2s" env:"POLL_INTERVAL,required"`
-		ReportInterval time.Duration `yaml:"report_interval" env-default:"10s" env:"REPORT_INTERVAL,required"`
-		Address        string        `yaml:"address" env-default:"http://127.0.0.1:8080" env:"ADDRESS,required"`
-		Key            string        `yaml:"key" env-default:"" env:"KEY"`
+		PollInterval   time.Duration `yaml:"poll_interval" env:"POLL_INTERVAL"`
+		ReportInterval time.Duration `yaml:"report_interval" env:"REPORT_INTERVAL"`
+		Address        string        `yaml:"address" env:"ADDRESS"`
+		Key            string        `yaml:"key" env:"KEY"`
 	} `yaml:"settings"`
 }
 
@@ -24,25 +25,7 @@ func GetConfig() *Config {
 
 	flag.Parse()
 
-	addr, ok := os.LookupEnv("ADDRESS")
-	if ok {
-		cfg.Settings.Address = addr
-	}
-	reportInterval, ok := os.LookupEnv("REPORT_INTERVAL")
-	if ok {
-		dur, _ := time.ParseDuration(reportInterval)
-		cfg.Settings.ReportInterval = dur
-	}
-
-	pollInterval, ok := os.LookupEnv("POLL_INTERVAL")
-	if ok {
-		dur, _ := time.ParseDuration(pollInterval)
-		cfg.Settings.PollInterval = dur
-	}
-	key, ok := os.LookupEnv("KEY")
-	if ok {
-		cfg.Settings.Key = key
-	}
+	env.Parse(&cfg.Settings)
 
 	return cfg
 }

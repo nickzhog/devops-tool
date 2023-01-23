@@ -3,6 +3,7 @@ module github.com/nickzhog/devops-tool
 go 1.19
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/go-chi/chi v1.5.4
 	github.com/jackc/pgconn v1.13.0
 	github.com/jackc/pgx/v4 v4.17.2

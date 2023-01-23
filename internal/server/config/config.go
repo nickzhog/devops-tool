@@ -2,18 +2,19 @@ package config
 
 import (
 	"flag"
-	"os"
 	"time"
+
+	"github.com/caarlos0/env"
 )
 
 type Config struct {
 	Settings struct {
-		DatabaseDSN   string        `yaml:"database_dsn" env-default:"" env:"DATABASE_DSN"`
-		Address       string        `yaml:"address" env-default:":8080" env:"ADDRESS,required"`
-		StoreInterval time.Duration `yaml:"store_interval" env-default:"1s" env:"STORE_INTERVAL,required"`
-		StoreFile     string        `yaml:"store_file" env-default:"/tmp/devops-metrics-db.json" env:"STORE_FILE,required"`
-		Restore       bool          `yaml:"restore" env-default:"true" env:"RESTORE,required"`
-		Key           string        `yaml:"key" env-default:"" env:"KEY"`
+		DatabaseDSN   string        `yaml:"database_dsn" env:"DATABASE_DSN"`
+		Address       string        `yaml:"address" env:"ADDRESS"`
+		StoreInterval time.Duration `yaml:"store_interval" env:"STORE_INTERVAL"`
+		StoreFile     string        `yaml:"store_file" env:"STORE_FILE"`
+		Restore       bool          `yaml:"restore" env:"RESTORE"`
+		Key           string        `yaml:"key" env:"KEY"`
 	} `yaml:"settings"`
 }
 
@@ -27,39 +28,7 @@ func GetConfig() *Config {
 	flag.StringVar(&cfg.Settings.Key, "k", "", "encription key")
 	flag.Parse()
 
-	dsn, ok := os.LookupEnv("DATABASE_DSN")
-	if ok {
-		cfg.Settings.DatabaseDSN = dsn
-	}
-
-	addressEnv, ok := os.LookupEnv("ADDRESS")
-	if ok {
-		cfg.Settings.Address = addressEnv
-	}
-	storeIntervalEnv, ok := os.LookupEnv("STORE_INTERVAL")
-	if ok {
-		if dur, err := time.ParseDuration(storeIntervalEnv); err == nil {
-			cfg.Settings.StoreInterval = dur
-		}
-	}
-
-	restoreEnv, ok := os.LookupEnv("RESTORE")
-	if ok {
-		switch restoreEnv {
-		case "false":
-			cfg.Settings.Restore = false
-		case "true":
-			cfg.Settings.Restore = true
-		}
-	}
-	storeFileEnv, ok := os.LookupEnv("STORE_FILE")
-	if ok {
-		cfg.Settings.StoreFile = storeFileEnv
-	}
-	key, ok := os.LookupEnv("KEY")
-	if ok {
-		cfg.Settings.Key = key
-	}
+	env.Parse(&cfg.Settings)
 
 	return cfg
 }
