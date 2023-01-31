@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -92,6 +93,12 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 			gaugeData = append(gaugeData, ForTemplate{Key: v.ID, Value: v.Value})
 		}
 	}
+	sort.Slice(gaugeData, func(i, j int) bool {
+		return gaugeData[i].Key < gaugeData[j].Key
+	})
+	sort.Slice(counterData, func(i, j int) bool {
+		return counterData[i].Key < counterData[j].Key
+	})
 
 	m := make(map[string]interface{})
 
