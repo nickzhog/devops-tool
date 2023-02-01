@@ -52,7 +52,7 @@ func Test_getFloat(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			result, _ := getFloat(tt.input)
+			result, _ := getFloatValue(tt.input)
 			require.Equal(result, tt.wantResult, tt.name)
 		})
 	}

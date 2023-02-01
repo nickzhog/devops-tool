@@ -10,15 +10,9 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
-	storage := metric.NewMemStorage()
-	if cfg.Settings.StoreFile == "" {
-		return storage
-	}
-
+func NewStorageFile(cfg *config.Config, logger *logging.Logger, storage metric.Storage) {
 	if cfg.Settings.Restore {
-		var err error
-		storage, err = getFromFile(cfg.Settings.StoreFile)
+		err := importFromFile(cfg.Settings.StoreFile, storage)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -27,7 +21,6 @@ func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 	file, err := os.OpenFile(cfg.Settings.StoreFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		logger.Fatal(err)
-		return storage
 	}
 
 	go func() {
@@ -39,20 +32,17 @@ func StartUpdates(cfg *config.Config, logger *logging.Logger) metric.Storage {
 			time.Sleep(cfg.Settings.StoreInterval)
 		}
 	}()
-
-	return storage
 }
 
-func getFromFile(file string) (metric.Storage, error) {
-	newStorage := metric.NewMemStorage()
+func importFromFile(file string, storage metric.Storage) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return newStorage, err
+		return err
 	}
 
-	err = newStorage.ImportFromJSON(context.TODO(), data)
+	err = storage.ImportFromJSON(context.TODO(), data)
 
-	return newStorage, err
+	return err
 }
 
 func updateFile(storage metric.Storage, f *os.File) (err error) {

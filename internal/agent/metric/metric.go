@@ -48,12 +48,11 @@ func (a *agent) UpdateMetrics() {
 
 	for i := 0; i < v.NumField(); i++ {
 		i := i
-		floatValue, ok := getFloat(v.Field(i).Interface())
+		floatValue, ok := getFloatValue(v.Field(i).Interface())
 		if !ok {
 			continue
 		}
 
-		// fmt.Printf("%v float64\n", typeOfS.Field(i).Name)
 		a.GaugeMetrics[typeOfS.Field(i).Name] = floatValue
 	}
 	a.GaugeMetrics["RandomValue"] = float64(rand.Int63n(1000))

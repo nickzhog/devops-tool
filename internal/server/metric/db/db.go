@@ -1,4 +1,4 @@
-package metric
+package db
 
 import (
 	"context"
@@ -7,16 +7,19 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
-	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/postgres"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
 type repository struct {
-	client postgresql.Client
+	client postgres.Client
 	logger *logging.Logger
+	cfg    *config.Config
 }
 
-func NewRepository(client postgresql.Client, logger *logging.Logger) Storage {
+func NewRepository(client postgres.Client, logger *logging.Logger, cfg *config.Config) *repository {
 	q := `
 	CREATE TABLE IF NOT EXISTS public.metrics (
 		id text not null, 
@@ -33,10 +36,11 @@ func NewRepository(client postgresql.Client, logger *logging.Logger) Storage {
 	return &repository{
 		client: client,
 		logger: logger,
+		cfg:    cfg,
 	}
 }
 
-func (r *repository) FindMetric(ctx context.Context, name, mtype string) (Metric, bool) {
+func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, bool) {
 	q := `
 		SELECT
 		 	delta, value 
@@ -48,24 +52,24 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (Metric
 
 	var delta sql.NullInt64
 	var value sql.NullFloat64
-	m := Metric{ID: name, MType: mtype}
+	m := metric.Metric{ID: name, MType: mtype}
 	err := r.client.QueryRow(ctx, q, mtype, name).Scan(
 		&delta, &value)
 
 	if err != nil {
 		r.logger.Errorf("metric find err:%s", err.Error())
-		return Metric{}, false
+		return metric.Metric{}, false
 	}
 
 	switch mtype {
-	case CounterType:
+	case metric.CounterType:
 		if !delta.Valid {
-			return Metric{}, false
+			return metric.Metric{}, false
 		}
 		m.Delta = &delta.Int64
-	case GaugeType:
+	case metric.GaugeType:
 		if !value.Valid {
-			return Metric{}, false
+			return metric.Metric{}, false
 		}
 		m.Value = &value.Float64
 	}
@@ -73,7 +77,7 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (Metric
 	return m, true
 }
 
-func (r *repository) UpsertMetric(ctx context.Context, metric *Metric) (err error) {
+func (r *repository) UpsertMetric(ctx context.Context, metric *metric.Metric) (err error) {
 	q := `
 	INSERT 
 	INTO metrics
@@ -94,10 +98,17 @@ func (r *repository) UpsertMetric(ctx context.Context, metric *Metric) (err erro
 }
 
 func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
-	var metrics []Metric
+	var metrics []metric.Metric
 	err := json.Unmarshal(data, &metrics)
 	if err != nil {
 		return err
+	}
+	if r.cfg.Settings.Key != "" {
+		for _, m := range metrics {
+			if !m.IsValidHash(r.cfg.Settings.Key) {
+				return fmt.Errorf("not valid hash for metric: %+v", m)
+			}
+		}
 	}
 
 	tx, err := r.client.Begin(ctx)
@@ -137,7 +148,7 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 		FROM public.metrics;
 	`
 
-	var metrics []Metric
+	var metrics []metric.Metric
 	rows, err := r.client.Query(ctx, q)
 	if err != nil {
 		r.logger.Errorf("metrics find err:%s", err.Error())
@@ -145,7 +156,7 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 	}
 
 	for rows.Next() {
-		var m Metric
+		var m metric.Metric
 
 		var delta sql.NullInt64
 		var value sql.NullFloat64
@@ -157,12 +168,12 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 		}
 
 		switch m.MType {
-		case CounterType:
+		case metric.CounterType:
 			if !delta.Valid {
 				return []byte(``), fmt.Errorf("null delta for %s", m.ID)
 			}
 			m.Delta = &delta.Int64
-		case GaugeType:
+		case metric.GaugeType:
 			if !value.Valid {
 				return []byte(``), fmt.Errorf("null value for %s", m.ID)
 			}

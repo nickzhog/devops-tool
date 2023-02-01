@@ -1,10 +1,11 @@
-package metric
+package cache
 
 import (
 	"context"
 	"sync"
 	"testing"
 
+	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -38,9 +39,9 @@ func TestMemStorage_Upsert(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metricElem := NewMetric(tt.setName, CounterType, tt.setValue)
+			metricElem := metric.NewMetric(tt.setName, metric.CounterType, tt.setValue)
 			storage.UpsertMetric(ctx, &metricElem)
-			metricElem, ok := storage.FindMetric(ctx, tt.setName, CounterType)
+			metricElem, ok := storage.FindMetric(ctx, tt.setName, metric.CounterType)
 			assert := assert.New(t)
 			assert.Equal(tt.wantResult, *metricElem.Delta)
 			assert.True(ok)

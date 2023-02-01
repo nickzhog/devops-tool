@@ -10,19 +10,20 @@ import (
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHandler_UpdateFromBody(t *testing.T) {
 	h := &Handler{
-		Data:   metric.NewMemStorage(),
-		Logger: nil,
-		Cfg:    &config.Config{},
+		Storage: cache.NewMemStorage(),
+		Logger:  nil,
+		Cfg:     &config.Config{},
 	}
 	h.Cfg.Settings.Key = ""
 
 	metricElem := metric.NewMetric("good_counter", metric.CounterType, int64(9))
-	err := h.Data.UpsertMetric(context.Background(), &metricElem)
+	err := h.Storage.UpsertMetric(context.Background(), &metricElem)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,10 +1,12 @@
-package metric
+package cache
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"sync"
+
+	"github.com/nickzhog/devops-tool/internal/server/metric"
 )
 
 type memStorage struct {
@@ -13,7 +15,7 @@ type memStorage struct {
 	CounterMetrics map[string]int64   `json:"counter_metrics,omitempty"`
 }
 
-func NewMemStorage() Storage {
+func NewMemStorage() *memStorage {
 	return &memStorage{
 		mutex:          new(sync.RWMutex),
 		GaugeMetrics:   make(map[string]float64),
@@ -21,21 +23,21 @@ func NewMemStorage() Storage {
 	}
 }
 
-func (m *memStorage) UpsertMetric(ctx context.Context, metric *Metric) error {
+func (m *memStorage) UpsertMetric(ctx context.Context, metricElem *metric.Metric) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	switch metric.MType {
-	case GaugeType:
-		m.GaugeMetrics[metric.ID] = *metric.Value
-	case CounterType:
-		delta := *metric.Delta
-		oldDelta, exist := m.CounterMetrics[metric.ID]
+	switch metricElem.MType {
+	case metric.GaugeType:
+		m.GaugeMetrics[metricElem.ID] = *metricElem.Value
+	case metric.CounterType:
+		delta := *metricElem.Delta
+		oldDelta, exist := m.CounterMetrics[metricElem.ID]
 		if exist {
 			delta += oldDelta
-			metric.Delta = &delta
+			metricElem.Delta = &delta
 		}
-		m.CounterMetrics[metric.ID] = delta
+		m.CounterMetrics[metricElem.ID] = delta
 
 	default:
 		return errors.New("wrong metric type")
@@ -44,7 +46,7 @@ func (m *memStorage) UpsertMetric(ctx context.Context, metric *Metric) error {
 	return nil
 }
 
-func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (Metric, bool) {
+func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, bool) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -53,31 +55,31 @@ func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (Metric
 		ok  bool
 	)
 	switch mtype {
-	case GaugeType:
+	case metric.GaugeType:
 		val, ok = m.GaugeMetrics[name]
-	case CounterType:
+	case metric.CounterType:
 		val, ok = m.CounterMetrics[name]
 	default:
-		return Metric{}, false
+		return metric.Metric{}, false
 	}
 	if !ok {
-		return Metric{}, false
+		return metric.Metric{}, false
 	}
 
-	return NewMetric(name, mtype, val), true
+	return metric.NewMetric(name, mtype, val), true
 }
 
 func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
-	var metrics []Metric
+	var metrics []metric.Metric
 	for k, v := range m.GaugeMetrics {
-		metrics = append(metrics, NewMetric(k, GaugeType, v))
+		metrics = append(metrics, metric.NewMetric(k, metric.GaugeType, v))
 	}
 
 	for k, v := range m.CounterMetrics {
-		metrics = append(metrics, NewMetric(k, CounterType, v))
+		metrics = append(metrics, metric.NewMetric(k, metric.CounterType, v))
 	}
 
 	encoded, err := json.Marshal(metrics)
@@ -86,7 +88,7 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 }
 
 func (m *memStorage) ImportFromJSON(ctx context.Context, data []byte) error {
-	var metrics []Metric
+	var metrics []metric.Metric
 	err := json.Unmarshal(data, &metrics)
 	if err != nil {
 		return err

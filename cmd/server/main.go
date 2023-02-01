@@ -9,8 +9,9 @@ import (
 	"github.com/nickzhog/devops-tool/internal/server/compress"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/handlers"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
+	"github.com/nickzhog/devops-tool/internal/server/metric/db"
+	"github.com/nickzhog/devops-tool/internal/server/postgres"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
@@ -27,13 +28,17 @@ func main() {
 
 	if cfg.Settings.DatabaseDSN != "" {
 		var err error
-		handlerData.ClientDB, err = postgresql.NewClient(context.Background(), 2, *cfg)
+		handlerData.ClientDB, err = postgres.NewClient(context.Background(), 2, cfg)
 		if err != nil {
 			logger.Tracef("db error: %s", err.Error())
 		}
-		handlerData.Data = metric.NewRepository(handlerData.ClientDB, logger)
+		handlerData.Storage = db.NewRepository(handlerData.ClientDB, logger, cfg)
 	} else {
-		handlerData.Data = storagefile.StartUpdates(cfg, logger)
+		handlerData.Storage = cache.NewMemStorage()
+	}
+
+	if cfg.Settings.StoreFile != "" {
+		storagefile.NewStorageFile(cfg, logger, handlerData.Storage)
 	}
 
 	r := chi.NewRouter()
@@ -57,6 +62,7 @@ func main() {
 		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateFromURL)
 	})
 
+	// batch update
 	r.Post("/updates/", handlerData.UpdateMany)
 
 	logger.Fatal(http.ListenAndServe(cfg.Settings.Address, r))

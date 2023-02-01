@@ -10,6 +10,7 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/nickzhog/devops-tool/internal/agent/config"
 	serverMetric "github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +38,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			mockStorage := serverMetric.NewMemStorage()
+			mockStorage := cache.NewMemStorage()
 
 			httpmock.RegisterResponder(http.MethodPost, "http://localhost/update",
 				func(req *http.Request) (*http.Response, error) {
@@ -105,7 +106,7 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			mockStorage := serverMetric.NewMemStorage()
+			mockStorage := cache.NewMemStorage()
 
 			httpmock.RegisterResponder(http.MethodPost, "http://localhost/updates/",
 				func(req *http.Request) (*http.Response, error) {

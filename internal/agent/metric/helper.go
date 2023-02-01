@@ -10,7 +10,7 @@ import (
 
 var floatType = reflect.TypeOf(float64(0))
 
-func getFloat(unk interface{}) (float64, bool) {
+func getFloatValue(unk interface{}) (float64, bool) {
 	v := reflect.ValueOf(unk)
 	v = reflect.Indirect(v)
 	if !v.Type().ConvertibleTo(floatType) {

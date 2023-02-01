@@ -15,7 +15,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/postgresql"
+	"github.com/nickzhog/devops-tool/internal/server/postgres"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
@@ -31,10 +31,10 @@ func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
 }
 
 type Handler struct {
-	Data     metric.Storage
+	Storage  metric.Storage
 	Logger   *logging.Logger
 	Cfg      *config.Config
-	ClientDB postgresql.Client
+	ClientDB postgres.Client
 }
 
 func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +75,7 @@ var templ = template.Must(template.New("index").Parse(
 ))
 
 func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := h.Data.ExportToJSON(r.Context())
+	data, err := h.Storage.ExportToJSON(r.Context())
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadGateway)
 	}
@@ -122,7 +122,7 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, exist := h.Data.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
+	metricElem, exist := h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
 	if !exist {
 		h.showError(w, "not found", http.StatusNotFound)
 		return
@@ -158,7 +158,7 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = h.Data.UpsertMetric(r.Context(), &metricElem)
+	err = h.Storage.UpsertMetric(r.Context(), &metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -189,7 +189,7 @@ func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, exist := h.Data.FindMetric(r.Context(), metricName, metricType)
+	metricElem, exist := h.Storage.FindMetric(r.Context(), metricName, metricType)
 	if !exist {
 		h.showError(w, "not found", http.StatusNotFound)
 		return
@@ -246,7 +246,7 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metricElem := metric.NewMetric(metricName, metricType, value)
-	err = h.Data.UpsertMetric(r.Context(), &metricElem)
+	err = h.Storage.UpsertMetric(r.Context(), &metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -270,16 +270,14 @@ func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, v := range metrics {
-			if !hmac.Equal(
-				[]byte(v.GetHash(h.Cfg.Settings.Key)),
-				[]byte(v.Hash)) {
+			if !v.IsValidHash(h.Cfg.Settings.Key) {
 				h.showError(w, fmt.Sprintf("wrong hash for %+v", v), http.StatusBadRequest)
 				return
 			}
 		}
 	}
 
-	err = h.Data.ImportFromJSON(r.Context(), body)
+	err = h.Storage.ImportFromJSON(r.Context(), body)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return

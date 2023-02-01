@@ -59,5 +59,10 @@ func (m *Metric) GetHash(key string) string {
 
 	h := hmac.New(sha256.New, []byte(key))
 	h.Write([]byte(data))
+
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (m *Metric) IsValidHash(key string) bool {
+	return m.GetHash(key) == m.Hash
 }

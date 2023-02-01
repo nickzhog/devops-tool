@@ -1,4 +1,4 @@
-package postgresql
+package postgres
 
 import (
 	"context"
@@ -18,7 +18,7 @@ type Client interface {
 	Ping(ctx context.Context) error
 }
 
-func NewClient(ctx context.Context, maxAttempts int, cfg config.Config) (pool Client, err error) {
+func NewClient(ctx context.Context, maxAttempts int, cfg *config.Config) (pool Client, err error) {
 	delay := 5 * time.Second
 	for maxAttempts > 0 {
 		if err = func() error {
