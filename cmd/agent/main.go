@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -14,28 +17,41 @@ func main() {
 	logger := logging.GetLogger()
 	logger.Tracef("config: %+v", cfg)
 
-	agent := metric.NewAgent()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	agent.UpdateMetrics()
-	agent.SendMetrics(cfg, logger)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 	go func() {
-		defer wg.Done()
-		t := time.NewTicker(cfg.Settings.PollInterval)
-		for range t.C {
-			agent.UpdateMetrics()
-		}
+		oscall := <-c
+		logger.Tracef("system call:%+v", oscall)
+		cancel()
 	}()
 
-	wg.Add(1)
+	agent := metric.NewAgent()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
-		defer wg.Done()
+		t := time.NewTicker(cfg.Settings.PollInterval)
+		select {
+		case <-ctx.Done():
+			logger.Trace("update metrics is stopped")
+		case <-t.C:
+			agent.UpdateMetrics()
+		}
+		wg.Done()
+	}()
+
+	go func() {
 		t := time.NewTicker(cfg.Settings.ReportInterval)
-		for range t.C {
+		select {
+		case <-ctx.Done():
+			logger.Trace("send metrics is stopped")
+		case <-t.C:
 			agent.SendMetrics(cfg, logger)
 		}
+		wg.Done()
 	}()
 
 	wg.Wait()

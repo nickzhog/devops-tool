@@ -3,16 +3,12 @@ package metric
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
-	"reflect"
-	"runtime"
 	"sync"
 
 	"github.com/nickzhog/devops-tool/internal/agent/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/pkg/logging"
-	"github.com/shirou/gopsutil/mem"
 )
 
 type Agent interface {
@@ -37,32 +33,10 @@ func NewAgent() Agent {
 }
 
 func (a *agent) UpdateMetrics() {
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-
-	v := reflect.ValueOf(memStats)
-	typeOfS := v.Type()
-
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	for i := 0; i < v.NumField(); i++ {
-		i := i
-		floatValue, ok := getFloatValue(v.Field(i).Interface())
-		if !ok {
-			continue
-		}
-
-		a.GaugeMetrics[typeOfS.Field(i).Name] = floatValue
-	}
-	a.GaugeMetrics["RandomValue"] = float64(rand.Int63n(1000))
-
-	//gopsutil
-	mem, _ := mem.VirtualMemory()
-
-	a.GaugeMetrics["CPUutilization1"] = float64(mem.UsedPercent)
-	a.GaugeMetrics["TotalMemory"] = float64(mem.Total)
-	a.GaugeMetrics["FreeMemory"] = float64(mem.Free)
+	setGaugeMetrics(a.GaugeMetrics)
 
 	a.CounterMetrics["PollCount"]++
 }
@@ -71,7 +45,9 @@ func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	var url string
 	var answer []byte
 	var err error
+
 	jsonData := a.ExportToJSON()
+
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
@@ -106,7 +82,8 @@ func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 		body, _ := json.Marshal(metric)
 		answer, err = sendRequest(url, body, http.MethodPost)
 	}
-	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %v", cfg.Settings.Address, err, string(answer))
+
+	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %s", cfg.Settings.Address, err, answer)
 
 	if len(jsonData) > 0 {
 		url := fmt.Sprintf("%s/updates/", cfg.Settings.Address)
