@@ -2,18 +2,20 @@ package main
 
 import (
 	"context"
-	"net/http"
+	"os"
+	"os/signal"
+	"sync"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
-	"github.com/nickzhog/devops-tool/internal/server/compress"
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/handlers"
+	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
 	"github.com/nickzhog/devops-tool/internal/server/metric/db"
-	"github.com/nickzhog/devops-tool/internal/server/postgres"
+	"github.com/nickzhog/devops-tool/internal/server/metric/redis"
+	redis_client "github.com/nickzhog/devops-tool/internal/server/redis"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
+	"github.com/nickzhog/devops-tool/internal/server/web"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/postgres"
 )
 
 func main() {
@@ -21,49 +23,55 @@ func main() {
 	logger := logging.GetLogger()
 	logger.Tracef("config: %+v", cfg)
 
-	handlerData := &handlers.Handler{
-		Logger: logger,
-		Cfg:    cfg,
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		oscall := <-c
+		logger.Tracef("system call:%+v", oscall)
+		cancel()
+	}()
+
+	var storage metric.Storage
+
+	switch {
+
+	case cfg.Settings.PostgresStorage.DatabaseDSN != "":
+		logger.Trace("postgres storage")
+		postgresClient, err := postgres.NewClient(ctx, 2, cfg.Settings.PostgresStorage.DatabaseDSN)
+		if err != nil {
+			logger.Fatalf("db error: %s", err.Error())
+		}
+		storage = db.NewRepository(postgresClient, logger, cfg)
+
+	case cfg.Settings.RedisStorage.Addr != "":
+		logger.Trace("redis storage")
+		redisClient := redis_client.NewClient(ctx, cfg)
+		storage = redis.NewRepository(redisClient, logger, cfg)
+
+	default:
+		logger.Trace("inmemory storage")
+		storage = cache.NewMemStorage()
 	}
 
-	if cfg.Settings.DatabaseDSN != "" {
-		var err error
-		handlerData.ClientDB, err = postgres.NewClient(context.Background(), 2, cfg)
-		if err != nil {
-			logger.Tracef("db error: %s", err.Error())
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	go func() {
+		srv := web.PrepareServer(logger, cfg, storage)
+		if err := web.Serve(ctx, logger, srv); err != nil {
+			logger.Errorf("failed to serve: %s", err.Error())
 		}
-		handlerData.Storage = db.NewRepository(handlerData.ClientDB, logger, cfg)
-	} else {
-		handlerData.Storage = cache.NewMemStorage()
-	}
+		wg.Done()
+	}()
 
 	if cfg.Settings.StoreFile != "" {
-		storagefile.NewStorageFile(cfg, logger, handlerData.Storage)
+		wg.Add(1)
+		go func() {
+			storagefile.NewStorageFile(ctx, cfg, logger, storage).StartUpdate(ctx)
+			wg.Done()
+		}()
 	}
-
-	r := chi.NewRouter()
-
-	r.Use(middleware.RealIP)
-	// r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	r.Use(compress.GzipMiddleWare)
-
-	r.Get("/", handlerData.IndexHandler)
-	r.Get("/ping", handlerData.PingHandler)
-
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlerData.SelectFromBody)
-		r.Get("/{metric_type}/{name}", handlerData.SelectFromURL)
-	})
-
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlerData.UpdateFromBody)
-		r.Post("/{metric_type}/{name}/{value}", handlerData.UpdateFromURL)
-	})
-
-	// batch update
-	r.Post("/updates/", handlerData.UpdateMany)
-
-	logger.Fatal(http.ListenAndServe(cfg.Settings.Address, r))
+	wg.Wait()
 }

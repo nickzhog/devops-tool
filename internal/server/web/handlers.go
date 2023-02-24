@@ -1,7 +1,6 @@
-package handlers
+package web
 
 import (
-	"context"
 	"crypto/hmac"
 	"encoding/json"
 	"fmt"
@@ -10,12 +9,10 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/postgres"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
@@ -31,20 +28,9 @@ func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
 }
 
 type Handler struct {
-	Storage  metric.Storage
-	Logger   *logging.Logger
-	Cfg      *config.Config
-	ClientDB postgres.Client
-}
-
-func (h *Handler) PingHandler(w http.ResponseWriter, r *http.Request) {
-	_, cancel := context.WithTimeout(r.Context(), time.Second*2)
-	defer cancel()
-	err := h.ClientDB.Ping(context.Background())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("db: %s", err.Error()), http.StatusInternalServerError)
-	}
-	w.Write(nil)
+	Storage metric.Storage
+	Logger  *logging.Logger
+	Cfg     *config.Config
 }
 
 type ForTemplate struct {
@@ -122,10 +108,13 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, exist := h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
-	if !exist {
-		h.showError(w, "not found", http.StatusNotFound)
-		return
+	metricElem, err = h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
+	if err != nil {
+		if err == metric.ErrNoResult {
+			h.showError(w, "not found", http.StatusNotFound)
+			return
+		}
+		h.showError(w, "not found", http.StatusInternalServerError)
 	}
 
 	if h.Cfg.Settings.Key != "" {
@@ -189,10 +178,13 @@ func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, exist := h.Storage.FindMetric(r.Context(), metricName, metricType)
-	if !exist {
-		h.showError(w, "not found", http.StatusNotFound)
-		return
+	metricElem, err := h.Storage.FindMetric(r.Context(), metricName, metricType)
+	if err != nil {
+		if err == metric.ErrNoResult {
+			h.showError(w, "not found", http.StatusNotFound)
+			return
+		}
+		h.showError(w, "not found", http.StatusInternalServerError)
 	}
 
 	var v interface{}

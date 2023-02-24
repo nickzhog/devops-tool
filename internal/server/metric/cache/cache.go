@@ -46,7 +46,7 @@ func (m *memStorage) UpsertMetric(ctx context.Context, metricElem *metric.Metric
 	return nil
 }
 
-func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, bool) {
+func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -60,13 +60,13 @@ func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric
 	case metric.CounterType:
 		val, ok = m.CounterMetrics[name]
 	default:
-		return metric.Metric{}, false
+		return metric.Metric{}, metric.ErrNoResult
 	}
 	if !ok {
-		return metric.Metric{}, false
+		return metric.Metric{}, metric.ErrNoResult
 	}
 
-	return metric.NewMetric(name, mtype, val), true
+	return metric.NewMetric(name, mtype, val), nil
 }
 
 func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
@@ -82,9 +82,15 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 		metrics = append(metrics, metric.NewMetric(k, metric.CounterType, v))
 	}
 
-	encoded, err := json.Marshal(metrics)
+	if len(metrics) < 1 {
+		return []byte(`[]`), nil
+	}
 
-	return encoded, err
+	encoded, err := json.Marshal(metrics)
+	if err != nil {
+		return []byte(``), err
+	}
+	return encoded, nil
 }
 
 func (m *memStorage) ImportFromJSON(ctx context.Context, data []byte) error {

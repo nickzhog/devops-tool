@@ -41,10 +41,10 @@ func TestMemStorage_Upsert(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			metricElem := metric.NewMetric(tt.setName, metric.CounterType, tt.setValue)
 			storage.UpsertMetric(ctx, &metricElem)
-			metricElem, ok := storage.FindMetric(ctx, tt.setName, metric.CounterType)
+			metricElem, err := storage.FindMetric(ctx, tt.setName, metric.CounterType)
 			assert := assert.New(t)
 			assert.Equal(tt.wantResult, *metricElem.Delta)
-			assert.True(ok)
+			assert.NoError(err)
 		})
 	}
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/postgres"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/postgres"
 )
 
 type repository struct {
@@ -36,11 +36,10 @@ func NewRepository(client postgres.Client, logger *logging.Logger, cfg *config.C
 	return &repository{
 		client: client,
 		logger: logger,
-		cfg:    cfg,
 	}
 }
 
-func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, bool) {
+func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	q := `
 		SELECT
 		 	delta, value 
@@ -58,23 +57,27 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric
 
 	if err != nil {
 		r.logger.Errorf("metric find err:%s", err.Error())
-		return metric.Metric{}, false
+		if err == pgx.ErrNoRows {
+			return metric.Metric{}, metric.ErrNoResult
+		}
+
+		return metric.Metric{}, err
 	}
 
 	switch mtype {
 	case metric.CounterType:
 		if !delta.Valid {
-			return metric.Metric{}, false
+			return metric.Metric{}, metric.ErrNoResult
 		}
 		m.Delta = &delta.Int64
 	case metric.GaugeType:
 		if !value.Valid {
-			return metric.Metric{}, false
+			return metric.Metric{}, metric.ErrNoResult
 		}
 		m.Value = &value.Float64
 	}
 
-	return m, true
+	return m, nil
 }
 
 func (r *repository) UpsertMetric(ctx context.Context, metric *metric.Metric) (err error) {

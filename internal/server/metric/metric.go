@@ -1,24 +1,19 @@
 package metric
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
-
-type Storage interface {
-	UpsertMetric(ctx context.Context, metrics *Metric) error
-	FindMetric(ctx context.Context, name, mtype string) (Metric, bool)
-	ExportToJSON(ctx context.Context) ([]byte, error)
-	ImportFromJSON(ctx context.Context, data []byte) error
-}
 
 const (
 	GaugeType   = "gauge"
 	CounterType = "counter"
 )
+
+var ErrNoResult = errors.New("metric not found")
 
 type Metric struct {
 	ID    string   `json:"id"`              // имя метрики

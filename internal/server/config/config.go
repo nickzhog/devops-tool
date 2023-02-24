@@ -9,26 +9,46 @@ import (
 
 type Config struct {
 	Settings struct {
-		Address       string        `yaml:"address" env:"ADDRESS"`
-		DatabaseDSN   string        `yaml:"database_dsn" env:"DATABASE_DSN"`
-		StoreFile     string        `yaml:"store_file" env:"STORE_FILE"`
-		Restore       bool          `yaml:"restore" env:"RESTORE"`
-		StoreInterval time.Duration `yaml:"store_interval" env:"STORE_INTERVAL"`
-		Key           string        `yaml:"key" env:"KEY"`
-	} `yaml:"settings"`
+		Address string `env:"ADDRESS"`
+
+		PostgresStorage struct {
+			DatabaseDSN string `env:"DATABASE_DSN"`
+		}
+
+		RedisStorage struct {
+			Addr     string `env:"REDIS_ADDR"`
+			Password string `env:"REDIS_PASSWORD"`
+			DB       int    `env:"REDIS_DB"`
+		}
+
+		StoreFile     string        `env:"STORE_FILE"`
+		Restore       bool          `env:"RESTORE"`
+		StoreInterval time.Duration `env:"STORE_INTERVAL"`
+
+		Key string `env:"ENCRYPTION_KEY"`
+	}
 }
 
 func GetConfig() *Config {
 	cfg := &Config{}
 	flag.StringVar(&cfg.Settings.Address, "a", ":8080", "address for server listen")
-	flag.StringVar(&cfg.Settings.DatabaseDSN, "d", "", "database dsn")
-	flag.StringVar(&cfg.Settings.StoreFile, "f", "/tmp/devops-metrics-db.json", "file for save and load metrics")
+
+	flag.StringVar(&cfg.Settings.PostgresStorage.DatabaseDSN, "d", "", "database dsn")
+
+	flag.StringVar(&cfg.Settings.RedisStorage.Addr, "redis_addr", "", "redis address")
+	flag.StringVar(&cfg.Settings.RedisStorage.Password, "redis_psw", "", "redis password")
+	flag.IntVar(&cfg.Settings.RedisStorage.DB, "redis_db", 0, "redis database")
+
+	flag.StringVar(&cfg.Settings.StoreFile, "f", "/tmp/devops-metrics-db.json", "file path for save and load metrics")
 	flag.BoolVar(&cfg.Settings.Restore, "r", true, "restore latest values")
 	flag.DurationVar(&cfg.Settings.StoreInterval, "i", time.Second, "interval for file update")
 	flag.StringVar(&cfg.Settings.Key, "k", "", "encription key")
+
 	flag.Parse()
 
 	env.Parse(&cfg.Settings)
+	env.Parse(&cfg.Settings.PostgresStorage)
+	env.Parse(&cfg.Settings.RedisStorage)
 
 	return cfg
 }

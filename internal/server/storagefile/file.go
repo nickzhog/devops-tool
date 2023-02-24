@@ -10,9 +10,20 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func NewStorageFile(cfg *config.Config, logger *logging.Logger, storage metric.Storage) {
+type StorageFile interface {
+	StartUpdate(ctx context.Context)
+}
+
+type storageFile struct {
+	file     *os.File
+	interval time.Duration
+	logger   *logging.Logger
+	storage  metric.Storage
+}
+
+func NewStorageFile(ctx context.Context, cfg *config.Config, logger *logging.Logger, storage metric.Storage) StorageFile {
 	if cfg.Settings.Restore {
-		err := importFromFile(cfg.Settings.StoreFile, storage)
+		err := importFromFile(ctx, cfg.Settings.StoreFile, storage)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -23,42 +34,56 @@ func NewStorageFile(cfg *config.Config, logger *logging.Logger, storage metric.S
 		logger.Fatal(err)
 	}
 
-	go func() {
-		for {
-			err = updateFile(storage, file)
-			if err != nil {
-				logger.Error(err)
-			}
-			time.Sleep(cfg.Settings.StoreInterval)
-		}
-	}()
+	return &storageFile{
+		interval: cfg.Settings.StoreInterval,
+		logger:   logger,
+		file:     file,
+		storage:  storage,
+	}
 }
 
-func importFromFile(file string, storage metric.Storage) error {
+func (s *storageFile) StartUpdate(ctx context.Context) {
+	ticker := time.NewTicker(s.interval)
+	for {
+		select {
+		case <-ticker.C:
+			err := s.updateFile(ctx)
+			if err != nil {
+				s.logger.Error(err)
+			}
+
+		case <-ctx.Done():
+			s.logger.Traceln("storage file update stopped")
+			return
+		}
+	}
+}
+
+func (s *storageFile) updateFile(ctx context.Context) (err error) {
+	err = s.file.Truncate(0)
+	if err != nil {
+		return
+	}
+	_, err = s.file.Seek(0, 0)
+	if err != nil {
+		return
+	}
+	data, err := s.storage.ExportToJSON(ctx)
+	if err != nil {
+		return
+	}
+	_, err = s.file.Write(data)
+
+	return
+}
+
+func importFromFile(ctx context.Context, file string, storage metric.Storage) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
 
-	err = storage.ImportFromJSON(context.TODO(), data)
+	err = storage.ImportFromJSON(ctx, data)
 
 	return err
-}
-
-func updateFile(storage metric.Storage, f *os.File) (err error) {
-	err = f.Truncate(0)
-	if err != nil {
-		return
-	}
-	_, err = f.Seek(0, 0)
-	if err != nil {
-		return
-	}
-	data, err := storage.ExportToJSON(context.TODO())
-	if err != nil {
-		return
-	}
-	_, err = f.Write(data)
-
-	return
 }
