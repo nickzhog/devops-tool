@@ -34,24 +34,30 @@ func main() {
 	wg.Add(2)
 	go func() {
 		t := time.NewTicker(cfg.Settings.PollInterval)
-		select {
-		case <-ctx.Done():
-			logger.Trace("update metrics is stopped")
-		case <-t.C:
-			agent.UpdateMetrics()
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				logger.Trace("update metrics is stopped")
+				return
+			case <-t.C:
+				agent.UpdateMetrics()
+			}
 		}
-		wg.Done()
 	}()
 
 	go func() {
 		t := time.NewTicker(cfg.Settings.ReportInterval)
-		select {
-		case <-ctx.Done():
-			logger.Trace("send metrics is stopped")
-		case <-t.C:
-			agent.SendMetrics(cfg, logger)
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				logger.Trace("send metrics is stopped")
+				return
+			case <-t.C:
+				agent.SendMetrics(cfg, logger)
+			}
 		}
-		wg.Done()
 	}()
 
 	wg.Wait()
