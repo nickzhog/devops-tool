@@ -14,6 +14,7 @@ const (
 )
 
 var ErrNoResult = errors.New("metric not found")
+var ErrWrongHash = errors.New("wrong hash for metric")
 
 type Metric struct {
 	ID    string   `json:"id"`              // имя метрики

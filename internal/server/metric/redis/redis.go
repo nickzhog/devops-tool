@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
@@ -27,9 +26,10 @@ func NewRepository(client *redis.Client, logger *logging.Logger, cfg *config.Con
 
 func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	result, err := r.client.Get(ctx, prepareKey(name, mtype)).Bytes()
-	if err == redis.Nil {
-		return metric.Metric{}, metric.ErrNoResult
-	} else if err != nil {
+	if err != nil {
+		if err == redis.Nil {
+			return metric.Metric{}, metric.ErrNoResult
+		}
 		return metric.Metric{}, err
 	}
 
@@ -56,7 +56,7 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 	for _, m := range metrics {
 		if r.cfg.Settings.Key != "" {
 			if !m.IsValidHash(r.cfg.Settings.Key) {
-				return fmt.Errorf("not valid hash for metric: %+v", m)
+				return metric.ErrWrongHash
 			}
 		}
 

@@ -109,7 +109,7 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 	if r.cfg.Settings.Key != "" {
 		for _, m := range metrics {
 			if !m.IsValidHash(r.cfg.Settings.Key) {
-				return fmt.Errorf("not valid hash for metric: %+v", m)
+				return metric.ErrWrongHash
 			}
 		}
 	}
