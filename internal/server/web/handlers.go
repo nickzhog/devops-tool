@@ -35,7 +35,7 @@ type Handler struct {
 
 type ForTemplate struct {
 	Key   string
-	Value interface{}
+	Value string
 }
 
 var templ = template.Must(template.New("index").Parse(
@@ -63,20 +63,24 @@ var templ = template.Must(template.New("index").Parse(
 func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.Storage.ExportToJSON(r.Context())
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusBadGateway)
+		h.showError(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	var metrics []metric.Metric
-	_ = json.Unmarshal(data, &metrics)
+	err = json.Unmarshal(data, &metrics)
+	if err != nil {
+		h.showError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	gaugeData := []ForTemplate{}
 	counterData := []ForTemplate{}
 	for _, v := range metrics {
 		switch v.MType {
 		case metric.CounterType:
-			counterData = append(counterData, ForTemplate{Key: v.ID, Value: v.Delta})
+			counterData = append(counterData, ForTemplate{Key: v.ID, Value: fmt.Sprintf("%v", *v.Delta)})
 		case metric.GaugeType:
-			gaugeData = append(gaugeData, ForTemplate{Key: v.ID, Value: v.Value})
+			gaugeData = append(gaugeData, ForTemplate{Key: v.ID, Value: fmt.Sprintf("%f", *v.Value)})
 		}
 	}
 	sort.Slice(gaugeData, func(i, j int) bool {
