@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    environment:
+      ADDRESS: "server:8080"
+      REDIS_ADDR: "redis:6379"
+      STORE_INTERVAL: 10s
+    networks:
+      - my-network
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    depends_on:
+      - server
+    environment:
+      ADDRESS: "http://server:8080"
+    networks:
+      - my-network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - my-network
+
+volumes:
+  redis_data:
+
+
+networks:
+  my-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
