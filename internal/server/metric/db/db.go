@@ -20,19 +20,6 @@ type repository struct {
 }
 
 func NewRepository(client postgres.Client, logger *logging.Logger, cfg *config.Config) *repository {
-	q := `
-	CREATE TABLE IF NOT EXISTS public.metrics (
-		id text not null, 
-		type text not null,
-		value double precision,
-		delta BIGINT,
-		PRIMARY KEY (id, type)
-	);`
-	_, err := client.Exec(context.TODO(), q)
-	if err != nil {
-		logger.Fatal(err)
-	}
-
 	return &repository{
 		client: client,
 		logger: logger,

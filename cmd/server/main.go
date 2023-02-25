@@ -11,6 +11,7 @@ import (
 	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
 	"github.com/nickzhog/devops-tool/internal/server/metric/db"
 	"github.com/nickzhog/devops-tool/internal/server/metric/redis"
+	"github.com/nickzhog/devops-tool/internal/server/migration"
 	redis_client "github.com/nickzhog/devops-tool/internal/server/redis"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
 	"github.com/nickzhog/devops-tool/internal/server/web"
@@ -40,6 +41,10 @@ func main() {
 
 	case cfg.Settings.PostgresStorage.DatabaseDSN != "":
 		logger.Trace("postgres storage")
+		err := migration.Migrate(cfg.Settings.PostgresStorage.DatabaseDSN)
+		if err != nil {
+			logger.Fatalf("migration error: %s", err.Error())
+		}
 		postgresClient, err := postgres.NewClient(ctx, 2, cfg.Settings.PostgresStorage.DatabaseDSN)
 		if err != nil {
 			logger.Fatalf("db error: %s", err.Error())
