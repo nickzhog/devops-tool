@@ -42,8 +42,8 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric
 	return answer, nil
 }
 
-func (r *repository) UpsertMetric(ctx context.Context, metric *metric.Metric) error {
-	return r.client.Set(ctx, prepareKeyForMetric(*metric), metric.Marshal(), 0).Err()
+func (r *repository) UpsertMetric(ctx context.Context, m *metric.Metric) error {
+	return r.client.Set(ctx, prepareKeyForMetric(*m), m.Marshal(), 0).Err()
 }
 
 func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
@@ -70,20 +70,30 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 }
 
 func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
-	iter := r.client.Scan(ctx, 0, "prefix:*", 0).Iterator()
+	keys, err := r.client.Keys(ctx, "metric:*").Result()
+	if err != nil {
+		return nil, err
+	}
 
-	var metrics []metric.Metric
-
-	for iter.Next(ctx) {
-		var m metric.Metric
-		err := json.Unmarshal([]byte(iter.Val()), &m)
+	metrics := make([]metric.Metric, 0)
+	for _, k := range keys {
+		data, err := r.client.Get(ctx, k).Bytes()
 		if err != nil {
-			return []byte(``), err
+			return nil, err
 		}
-	}
-	if err := iter.Err(); err != nil {
-		return []byte(``), err
+		var m metric.Metric
+		err = json.Unmarshal(data, &m)
+		if err != nil {
+			return nil, err
+		}
+
+		metrics = append(metrics, m)
 	}
 
-	return json.Marshal(metrics)
+	data, err := json.Marshal(metrics)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

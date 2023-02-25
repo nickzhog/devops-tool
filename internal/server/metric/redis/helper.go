@@ -7,9 +7,9 @@ import (
 )
 
 func prepareKeyForMetric(m metric.Metric) string {
-	return fmt.Sprintf("%s_%s", m.ID, m.MType)
+	return fmt.Sprintf("metric:%s_%s", m.ID, m.MType)
 }
 
 func prepareKey(id, mtype string) string {
-	return fmt.Sprintf("%s_%s", id, mtype)
+	return fmt.Sprintf("metric:%s_%s", id, mtype)
 }
