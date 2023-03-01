@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	"github.com/nickzhog/devops-tool/internal/server/metric"
@@ -10,40 +9,45 @@ import (
 )
 
 func TestMemStorage_Upsert(t *testing.T) {
-	storage := &memStorage{
-		mutex:          &sync.RWMutex{},
-		GaugeMetrics:   make(map[string]float64),
-		CounterMetrics: make(map[string]int64),
-	}
-	storage.CounterMetrics["good_counter"] = 10
+	storage := NewMemStorage()
 
 	tests := []struct {
 		name       string
-		setName    string
-		setValue   int64
-		wantResult int64
+		metric     metric.Metric
+		wantResult interface{}
 	}{
 		{
-			name:       "increment test",
-			setName:    "good_counter",
-			setValue:   10,
-			wantResult: 20,
+			name:       "counter metric",
+			metric:     metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			wantResult: int64(10),
 		},
 		{
-			name:       "new value",
-			setName:    "good_counter2",
-			setValue:   10,
-			wantResult: 10,
+			name:       "increment test",
+			metric:     metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			wantResult: int64(20),
+		},
+		{
+			name:       "gauge metric",
+			metric:     metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			wantResult: float64(10),
 		},
 	}
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metricElem := metric.NewMetric(tt.setName, metric.CounterType, tt.setValue)
-			storage.UpsertMetric(ctx, &metricElem)
-			metricElem, err := storage.FindMetric(ctx, tt.setName, metric.CounterType)
+
+			storage.UpsertMetric(ctx, &tt.metric)
+
+			metricElem, err := storage.FindMetric(ctx, tt.metric.ID, tt.metric.MType)
 			assert := assert.New(t)
-			assert.Equal(tt.wantResult, *metricElem.Delta)
+
+			switch tt.metric.MType {
+			case metric.CounterType:
+				assert.Equal(tt.wantResult, *metricElem.Delta)
+			case metric.GaugeType:
+				assert.Equal(tt.wantResult, *metricElem.Value)
+			}
+
 			assert.NoError(err)
 		})
 	}

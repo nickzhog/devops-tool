@@ -46,27 +46,30 @@ func (m *memStorage) UpsertMetric(ctx context.Context, metricElem *metric.Metric
 	return nil
 }
 
-func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
+func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metricElem metric.Metric, err error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
 	var (
-		val interface{}
-		ok  bool
+		ok    bool
+		value float64
+		delta int64
 	)
+
 	switch mtype {
 	case metric.GaugeType:
-		val, ok = m.GaugeMetrics[name]
+		value, ok = m.GaugeMetrics[name]
+		metricElem.Value = &value
 	case metric.CounterType:
-		val, ok = m.CounterMetrics[name]
-	default:
-		return metric.Metric{}, metric.ErrNoResult
+		delta, ok = m.CounterMetrics[name]
+		metricElem.Delta = &delta
 	}
+
 	if !ok {
 		return metric.Metric{}, metric.ErrNoResult
 	}
 
-	return metric.NewMetric(name, mtype, val), nil
+	return
 }
 
 func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
