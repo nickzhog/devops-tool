@@ -43,7 +43,7 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric
 }
 
 func (r *repository) UpsertMetric(ctx context.Context, m *metric.Metric) error {
-	return r.client.Set(ctx, prepareKeyForMetric(*m), m.Marshal(), 0).Err()
+	return r.client.Set(ctx, prepareKey(m.ID, m.MType), m.Marshal(), 0).Err()
 }
 
 func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
