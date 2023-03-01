@@ -73,8 +73,8 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gaugeData := []ForTemplate{}
-	counterData := []ForTemplate{}
+	gaugeData := make([]ForTemplate, 0)
+	counterData := make([]ForTemplate, 0)
 	for _, v := range metrics {
 		switch v.MType {
 		case metric.CounterType:
@@ -215,40 +215,43 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	metricValue := chi.URLParam(r, "value")
 
 	var (
-		value interface{}
-		err   error
+		metricElem  metric.Metric
+		valueString string
 	)
 
 	switch metricType {
 	case metric.GaugeType:
-		value, err = strconv.ParseFloat(metricValue, 64)
+		value, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
 			h.showError(w,
 				fmt.Sprintf("cant convert value to float:%v", err.Error()),
 				http.StatusBadRequest)
 			return
 		}
+		metricElem = metric.NewMetric(metricName, metricType, value)
+		valueString = fmt.Sprintf("%f", value)
 	case metric.CounterType:
-		value, err = strconv.ParseInt(metricValue, 10, 64)
+		value, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			h.showError(w,
 				fmt.Sprintf("cant convert value to int64:%v", err.Error()),
 				http.StatusBadRequest)
 			return
 		}
+		metricElem = metric.NewMetric(metricName, metricType, value)
+		valueString = fmt.Sprintf("%v", value)
 	default:
 		h.showError(w, "wrong metric type", http.StatusNotImplemented)
 		return
 	}
 
-	metricElem := metric.NewMetric(metricName, metricType, value)
-	err = h.Storage.UpsertMetric(r.Context(), &metricElem)
+	err := h.Storage.UpsertMetric(r.Context(), &metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	fmt.Fprintf(w, "%v", value)
+	fmt.Fprintf(w, "%v", valueString)
 }
 
 func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
