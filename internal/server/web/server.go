@@ -27,7 +27,8 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.St
 	// r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Use(compress.GzipMiddleWare)
+	r.Use(compress.GzipCompress)
+	r.Use(compress.GzipDecompress)
 
 	r.Get("/", handlerData.IndexHandler)
 
