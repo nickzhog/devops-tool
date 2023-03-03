@@ -24,16 +24,20 @@ type Metric struct {
 	Hash  string   `json:"hash,omitempty"`  // значение хеш-функции
 }
 
-func NewMetric(name, metricType string, value interface{}) Metric {
+type MetricType interface {
+	int64 | float64
+}
+
+func NewMetric[T MetricType](name, metricType string, value T) Metric {
 	var metric Metric
 	metric.ID = name
 	metric.MType = metricType
 	switch metricType {
 	case CounterType:
-		val := value.(int64)
+		val := any(value).(int64)
 		metric.Delta = &val
 	case GaugeType:
-		val := value.(float64)
+		val := any(value).(float64)
 		metric.Value = &val
 	}
 	return metric
