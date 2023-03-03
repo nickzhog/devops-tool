@@ -67,7 +67,7 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric
 	return m, nil
 }
 
-func (r *repository) UpsertMetric(ctx context.Context, metric *metric.Metric) (err error) {
+func (r *repository) UpsertMetric(ctx context.Context, metric metric.Metric) (err error) {
 	q := `
 	INSERT 
 	INTO metrics
@@ -142,7 +142,7 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 	rows, err := r.client.Query(ctx, q)
 	if err != nil {
 		r.logger.Errorf("metrics find err:%s", err.Error())
-		return []byte(``), err
+		return nil, err
 	}
 
 	for rows.Next() {
@@ -154,18 +154,18 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 		err = rows.Scan(&m.ID, &m.MType, &delta, &value)
 		if err != nil {
 			r.logger.Errorf("metrics parse:%s", err.Error())
-			return []byte(``), err
+			return nil, err
 		}
 
 		switch m.MType {
 		case metric.CounterType:
 			if !delta.Valid {
-				return []byte(``), fmt.Errorf("null delta for %s", m.ID)
+				return nil, fmt.Errorf("null delta for %s", m.ID)
 			}
 			m.Delta = &delta.Int64
 		case metric.GaugeType:
 			if !value.Valid {
-				return []byte(``), fmt.Errorf("null value for %s", m.ID)
+				return nil, fmt.Errorf("null value for %s", m.ID)
 			}
 			m.Value = &value.Float64
 		}

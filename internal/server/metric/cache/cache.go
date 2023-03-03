@@ -23,7 +23,7 @@ func NewMemStorage() *memStorage {
 	}
 }
 
-func (m *memStorage) UpsertMetric(ctx context.Context, metricElem *metric.Metric) error {
+func (m *memStorage) UpsertMetric(ctx context.Context, metricElem metric.Metric) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -46,30 +46,31 @@ func (m *memStorage) UpsertMetric(ctx context.Context, metricElem *metric.Metric
 	return nil
 }
 
-func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metricElem metric.Metric, err error) {
+func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
 	var (
-		ok    bool
-		value float64
-		delta int64
+		answer = metric.Metric{ID: name, MType: mtype}
+		ok     bool
+		value  float64
+		delta  int64
 	)
 
 	switch mtype {
 	case metric.GaugeType:
 		value, ok = m.GaugeMetrics[name]
-		metricElem.Value = &value
+		answer.Value = &value
 	case metric.CounterType:
 		delta, ok = m.CounterMetrics[name]
-		metricElem.Delta = &delta
+		answer.Delta = &delta
 	}
 
 	if !ok {
 		return metric.Metric{}, metric.ErrNoResult
 	}
 
-	return
+	return answer, nil
 }
 
 func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
@@ -91,7 +92,7 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 
 	encoded, err := json.Marshal(metrics)
 	if err != nil {
-		return []byte(``), err
+		return nil, err
 	}
 	return encoded, nil
 }
@@ -104,7 +105,7 @@ func (m *memStorage) ImportFromJSON(ctx context.Context, data []byte) error {
 	}
 
 	for _, v := range metrics {
-		err = m.UpsertMetric(ctx, &v)
+		err = m.UpsertMetric(ctx, v)
 		if err != nil {
 			return err
 		}

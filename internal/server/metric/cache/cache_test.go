@@ -36,7 +36,7 @@ func TestMemStorage_Upsert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			storage.UpsertMetric(ctx, &tt.metric)
+			storage.UpsertMetric(ctx, tt.metric)
 
 			metricElem, err := storage.FindMetric(ctx, tt.metric.ID, tt.metric.MType)
 			assert := assert.New(t)
