@@ -52,3 +52,36 @@ func TestMemStorage_Upsert(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkExportToJSON(b *testing.B) {
+	metrics := []byte(`
+	[
+		{"id":"good_gauge","type":"gauge","value":321},
+		{"id":"good_gauge2","type":"gauge","value":123},
+		{"id":"good_counter","type":"counter","delta":10},
+		{"id":"good_counter2","type":"counter","delta":14},
+		{"id":"good_gauge3","type":"gauge","value":321},
+		{"id":"good_gauge4","type":"gauge","value":321},
+		{"id":"good_gauge5","type":"gauge","value":321},
+		{"id":"good_gauge6","type":"gauge","value":321},
+		{"id":"good_gauge7","type":"gauge","value":321},
+		{"id":"good_gauge8","type":"gauge","value":321},
+		{"id":"good_gauge9","type":"gauge","value":321},
+		{"id":"good_gauge10","type":"gauge","value":321},
+		{"id":"good_gauge11","type":"gauge","value":321},
+		{"id":"good_gauge12","type":"gauge","value":321}
+	]`)
+
+	assert := assert.New(b)
+
+	storage := NewMemStorage()
+	err := storage.ImportFromJSON(context.Background(), metrics)
+	assert.NoError(err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.ReportAllocs()
+		_, err := storage.ExportToJSON(context.Background())
+		assert.NoError(err)
+	}
+}
