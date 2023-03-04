@@ -151,18 +151,24 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = h.Storage.UpsertMetric(r.Context(), &metricElem)
+	err = h.Storage.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	mcurrent, err := h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
+	if err != nil {
+		h.showError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if h.Cfg.Settings.Key != "" {
-		metricElem.Hash = string(metricElem.GetHash(h.Cfg.Settings.Key))
+		mcurrent.Hash = string(mcurrent.GetHash(h.Cfg.Settings.Key))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(metricElem.Marshal())
+	w.Write(mcurrent.Marshal())
 }
 
 func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +251,7 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Storage.UpsertMetric(r.Context(), &metricElem)
+	err := h.Storage.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return

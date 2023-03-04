@@ -22,14 +22,8 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 	}
 	h.Cfg.Settings.Key = ""
 
-	metricElem := metric.NewMetric("good_counter", metric.CounterType, int64(9))
-	err := h.Storage.UpsertMetric(context.Background(), &metricElem)
-	if err != nil {
-		t.Fatal(err)
-	}
 	type request struct {
-		method string
-		data   []byte
+		data []byte
 	}
 	type want struct {
 		code        int
@@ -42,22 +36,20 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 		want
 	}{
 		{
-			name: "positive case #1",
+			name: "valid gauge metric",
 			request: request{
-				method: http.MethodPost,
-				data:   metric.NewMetric("test", metric.GaugeType, float64(15.1)).Marshal(),
+				data: metric.NewMetric("test_gauge", metric.GaugeType, float64(15.1)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.NewMetric("test", metric.GaugeType, float64(15.1)).Marshal(),
+				response:    metric.NewMetric("test_gauge", metric.GaugeType, float64(15.1)).Marshal(),
 				contentType: "application/json",
 			},
 		},
 		{
 			name: "wrong type",
 			request: request{
-				method: http.MethodPost,
-				data:   []byte(`{"id":"good_metric","type":"new_type", "value": 123}`),
+				data: []byte(`{"id":"good_metric","type":"new_type", "value": 123}`),
 			},
 			want: want{
 				code:        http.StatusBadRequest,
@@ -66,22 +58,31 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			},
 		},
 		{
-			name: "existed counter",
+			name: "valid counter",
 			request: request{
-				method: http.MethodPost,
-				data:   metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
+				data: metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.NewMetric("good_counter", metric.CounterType, int64(19)).Marshal(),
+				response:    metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
+				contentType: "application/json",
+			},
+		},
+		{
+			name: "counter increment",
+			request: request{
+				data: metric.NewMetric("good_counter", metric.CounterType, int64(1)).Marshal(),
+			},
+			want: want{
+				code:        http.StatusOK,
+				response:    metric.NewMetric("good_counter", metric.CounterType, int64(11)).Marshal(),
 				contentType: "application/json",
 			},
 		},
 		{
 			name: "empty body",
 			request: request{
-				method: http.MethodPost,
-				data:   []byte(``),
+				data: nil,
 			},
 			want: want{
 				code:        http.StatusBadRequest,
@@ -92,7 +93,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(tt.method, "/update", bytes.NewBuffer([]byte(tt.data)))
+			request := httptest.NewRequest(http.MethodPost, "/update", bytes.NewBuffer([]byte(tt.data)))
 
 			w := httptest.NewRecorder()
 			h := http.HandlerFunc(h.UpdateFromBody)
@@ -108,6 +109,145 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 
 			assert.JSONEq(string(tt.want.response), string(resBody))
 			assert.Equal(tt.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
+
+func TestHandler_SelectFromBody(t *testing.T) {
+	h := &Handler{
+		Storage: cache.NewMemStorage(),
+		Logger:  nil,
+		Cfg:     &config.Config{},
+	}
+	h.Cfg.Settings.Key = ""
+
+	nulFloat := float64(0)
+	nulInt := int64(0)
+
+	type want struct {
+		code     int
+		response []byte
+	}
+	tests := []struct {
+		name   string
+		metric metric.Metric
+		want
+	}{
+		{
+			name:   "gauge test",
+			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`{"id":"good_gauge","type":"gauge", "value": 10}`),
+			},
+		},
+		{
+			name:   "counter test",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`{"id":"good_counter","type":"counter", "delta": 10}`),
+			},
+		},
+		{
+			name:   "counter increment",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`{"id":"good_counter","type":"counter", "delta": 20}`),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			err := h.Storage.UpsertMetric(context.Background(), tt.metric)
+			assert.NoError(err)
+
+			tt.metric.Value = &nulFloat
+			tt.metric.Delta = &nulInt
+			request := httptest.NewRequest(http.MethodPost, "/value", bytes.NewBuffer(tt.metric.Marshal()))
+
+			w := httptest.NewRecorder()
+			h := http.HandlerFunc(h.SelectFromBody)
+			h.ServeHTTP(w, request)
+			res := w.Result()
+
+			assert.Equal(tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+			assert.NoError(err)
+
+			assert.JSONEq(string(tt.want.response), string(resBody))
+		})
+	}
+}
+
+func TestHandler_UpdateMany(t *testing.T) {
+	handler := &Handler{
+		Logger: nil,
+		Cfg:    &config.Config{},
+	}
+	handler.Cfg.Settings.Key = ""
+
+	tests := []struct {
+		name        string
+		requestData []byte
+		wantCode    int
+	}{
+		{
+			name: "gauge metrics",
+			requestData: []byte(`
+			[
+				{"id":"good_metric","type":"gauge", "value": 321},
+				{"id":"good_metric","type":"gauge", "value": 123}
+			]
+			`),
+			wantCode: http.StatusOK,
+		},
+		{
+			name: "counter increment",
+			requestData: []byte(`
+			[
+				{"id":"good_metric","type":"gauge","value":321},
+				{"id":"good_metric","type":"gauge","value":123},
+				{"id":"good_metric","type":"counter","delta":10},
+				{"id":"good_metric","type":"counter","delta":10}
+			]
+			`),
+			wantCode: http.StatusOK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			handler.Storage = cache.NewMemStorage()
+
+			request := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewBuffer([]byte(tt.requestData)))
+
+			w := httptest.NewRecorder()
+			h := http.HandlerFunc(handler.UpdateMany)
+			h.ServeHTTP(w, request)
+			res := w.Result()
+			defer res.Body.Close()
+
+			assert := assert.New(t)
+			assert.Equal(tt.wantCode, res.StatusCode)
+
+			if tt.wantCode == http.StatusOK {
+				tempStorage := cache.NewMemStorage()
+				err := tempStorage.ImportFromJSON(context.TODO(), tt.requestData)
+				assert.NoError(err)
+
+				data, err := tempStorage.ExportToJSON(context.TODO())
+				assert.NoError(err)
+
+				dataHandler, err := handler.Storage.ExportToJSON(context.TODO())
+				assert.NoError(err)
+
+				assert.JSONEq(string(data), string(dataHandler))
+			}
 		})
 	}
 }
