@@ -43,6 +43,13 @@ func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric
 }
 
 func (r *repository) UpsertMetric(ctx context.Context, m metric.Metric) error {
+	if m.MType == metric.CounterType {
+		mcurrent, err := r.FindMetric(ctx, m.ID, metric.CounterType)
+		if err != nil && err != metric.ErrNoResult {
+			return err
+		}
+		*m.Delta += *mcurrent.Delta
+	}
 	return r.client.Set(ctx, prepareKey(m.ID, m.MType), m.Marshal(), 0).Err()
 }
 
