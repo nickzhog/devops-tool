@@ -21,16 +21,29 @@ func TestMetrics_SendMetrics(t *testing.T) {
 	cfg.Settings.Address = "http://localhost"
 
 	tests := []struct {
-		name    string
-		metrics string
+		name     string
+		metrics  string
+		whantErr bool
 	}{
 		{
-			name:    "case #1 / positive",
-			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test2","type":"gauge","value":12.1}]`,
+			name:     "case #1 / positive",
+			metrics:  `[{"id":"test1","type":"counter","delta":12},{"id":"test2","type":"gauge","value":12.1}]`,
+			whantErr: false,
 		},
 		{
-			name:    "case #2 / positive",
-			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test1","type":"counter","delta":12}]`,
+			name:     "case #2 / positive",
+			metrics:  `[{"id":"test1","type":"counter","delta":12},{"id":"test1","type":"counter","delta":12}]`,
+			whantErr: false,
+		},
+		{
+			name:     "case #3 / bad json",
+			metrics:  `[{"id":"test1","type"]`,
+			whantErr: true,
+		},
+		{
+			name:     "case #4 / wrong metric",
+			metrics:  `[{"id":"test1","type":"wrong_type","delta":12},{"id":"test1","type":"wrong_type","delta":12}]`,
+			whantErr: true,
 		},
 	}
 
@@ -53,7 +66,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 
-					err = mockStorage.UpsertMetric(req.Context(), &elem)
+					err = mockStorage.UpsertMetric(req.Context(), elem)
 					if err != nil {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
@@ -71,6 +84,10 @@ func TestMetrics_SendMetrics(t *testing.T) {
 
 			agentStorage := NewAgent()
 			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
+			if tt.whantErr {
+				assert.Error(err)
+				return
+			}
 			assert.NoError(err)
 
 			agentStorage.SendMetrics(cfg, logger)
@@ -89,8 +106,9 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 	cfg.Settings.Address = "http://localhost"
 
 	tests := []struct {
-		name    string
-		metrics string
+		name     string
+		metrics  string
+		whantErr bool
 	}{
 		{
 			name:    "case #1 / positive",
@@ -99,6 +117,16 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 		{
 			name:    "case #2 / positive",
 			metrics: `[{"id":"test1","type":"counter","delta":12},{"id":"test1","type":"counter","delta":12}]`,
+		},
+		{
+			name:     "case #3 / bad json",
+			metrics:  `[{"id":"test1","type"]`,
+			whantErr: true,
+		},
+		{
+			name:     "case #4 / wrong metric",
+			metrics:  `[{"id":"test1","type":"wrong_type","delta":12},{"id":"test1","type":"wrong_type","delta":12}]`,
+			whantErr: true,
 		},
 	}
 
@@ -129,6 +157,10 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 
 			agentStorage := NewAgent()
 			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
+			if tt.whantErr {
+				assert.Error(err)
+				return
+			}
 			assert.NoError(err)
 
 			agentStorage.SendMetrics(cfg, logger)

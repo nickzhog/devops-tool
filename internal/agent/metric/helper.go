@@ -18,12 +18,12 @@ func sendRequest(url string, postData []byte, method string) ([]byte, error) {
 
 	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer(postData))
 	if err != nil {
-		return []byte(``), err
+		return nil, err
 	}
 
 	res, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return []byte(``), err
+		return nil, err
 	}
 	defer res.Body.Close()
 

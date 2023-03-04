@@ -54,7 +54,7 @@ func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, []byte(``), http.MethodPost)
+		sendRequest(url, nil, http.MethodPost)
 
 		////
 
@@ -70,7 +70,7 @@ func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, []byte(``), http.MethodPost)
+		sendRequest(url, nil, http.MethodPost)
 
 		////
 
@@ -109,6 +109,8 @@ func (a *agent) ImportFromJSON(data []byte) error {
 			a.CounterMetrics[v.ID] = *v.Delta
 		case metric.GaugeType:
 			a.GaugeMetrics[v.ID] = *v.Value
+		default:
+			return fmt.Errorf("wring metric type: %s", v.MType)
 		}
 	}
 
@@ -128,7 +130,7 @@ func (a *agent) ExportToJSON() []byte {
 	}
 	ans, err := json.Marshal(metrics)
 	if err != nil {
-		return []byte(``)
+		return nil
 	}
 	return ans
 }
