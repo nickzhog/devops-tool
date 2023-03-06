@@ -339,3 +339,76 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_SelectFromURL(t *testing.T) {
+	handler := &Handler{
+		Storage: cache.NewMemStorage(),
+		Logger:  nil,
+		Cfg:     &config.Config{},
+	}
+	handler.Cfg.Settings.Key = ""
+
+	type want struct {
+		code     int
+		response []byte
+	}
+	tests := []struct {
+		name   string
+		metric metric.Metric
+		want
+	}{
+		{
+			name:   "gauge test",
+			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`10`),
+			},
+		},
+		{
+			name:   "counter test",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`10`),
+			},
+		},
+		{
+			name:   "counter increment",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`20`),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			err := handler.Storage.UpsertMetric(context.Background(), tt.metric)
+			assert.NoError(err)
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/{metric_type}/{name}", nil)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("metric_type", tt.metric.MType)
+			rctx.URLParams.Add("name", tt.metric.ID)
+
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+
+			h := http.HandlerFunc(handler.SelectFromURL)
+			h.ServeHTTP(w, r)
+			res := w.Result()
+
+			assert.Equal(tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+			assert.NoError(err)
+
+			assert.Equal(string(tt.want.response), string(resBody))
+		})
+	}
+}
