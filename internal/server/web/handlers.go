@@ -3,6 +3,7 @@ package web
 import (
 	"crypto/hmac"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -205,7 +206,7 @@ func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 		v = *metricElem.Value
 	}
 
-	fmt.Fprintf(w, "%v", v)
+	w.Write([]byte(fmt.Sprintf("%v", v)))
 }
 
 func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
@@ -235,7 +236,7 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		metricElem = metric.NewMetric(metricName, metricType, value)
-		valueString = fmt.Sprintf("%f", value)
+		valueString = fmt.Sprintf("%g", value)
 	case metric.CounterType:
 		value, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
@@ -246,6 +247,14 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 		}
 		metricElem = metric.NewMetric(metricName, metricType, value)
 		valueString = fmt.Sprintf("%v", value)
+
+		actualMetric, err := h.Storage.FindMetric(r.Context(), metricName, metricType)
+		if err != nil && !errors.Is(err, metric.ErrNoResult) {
+			h.showError(w, err.Error(), http.StatusInternalServerError)
+			return
+		} else if err == nil {
+			valueString = fmt.Sprintf("%v", *actualMetric.Delta+value)
+		}
 	default:
 		h.showError(w, "wrong metric type", http.StatusNotImplemented)
 		return
@@ -253,11 +262,11 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Storage.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusBadRequest)
+		h.showError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprintf(w, "%v", valueString)
+	w.Write([]byte(valueString))
 }
 
 func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {

@@ -3,11 +3,13 @@ package web
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
@@ -248,6 +250,92 @@ func TestHandler_UpdateMany(t *testing.T) {
 
 				assert.JSONEq(string(data), string(dataHandler))
 			}
+		})
+	}
+}
+
+func TestHandler_UpdateFromURL(t *testing.T) {
+	handler := &Handler{
+		Storage: cache.NewMemStorage(),
+		Logger:  nil,
+		Cfg:     &config.Config{},
+	}
+	handler.Cfg.Settings.Key = ""
+
+	type want struct {
+		code     int
+		response []byte
+	}
+	tests := []struct {
+		name   string
+		metric metric.Metric
+		want
+	}{
+		{
+			name:   "gauge test",
+			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(8.2)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`8.2`),
+			},
+		},
+		{
+			name:   "counter test",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(8)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`8`),
+			},
+		},
+		{
+			name:   "counter increment",
+			metric: metric.NewMetric("good_counter", metric.CounterType, int64(8)),
+			want: want{
+				code:     http.StatusOK,
+				response: []byte(`16`),
+			},
+		},
+		{
+			name:   "wrong metric type",
+			metric: metric.NewMetric("bad_metric", "wrong_type", int64(8)),
+			want: want{
+				code:     http.StatusNotImplemented,
+				response: []byte(`{"error":"wrong metric type"}`),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodPost, "/{metric_type}/{name}/{value}", nil)
+
+			rctx := chi.NewRouteContext()
+			rctx.URLParams.Add("metric_type", tt.metric.MType)
+			rctx.URLParams.Add("name", tt.metric.ID)
+
+			switch tt.metric.MType {
+			case metric.GaugeType:
+				rctx.URLParams.Add("value", fmt.Sprintf("%g", *tt.metric.Value))
+
+			case metric.CounterType:
+				rctx.URLParams.Add("value", fmt.Sprintf("%v", *tt.metric.Delta))
+			}
+
+			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+
+			h := http.HandlerFunc(handler.UpdateFromURL)
+			h.ServeHTTP(w, r)
+			res := w.Result()
+
+			assert.Equal(tt.want.code, res.StatusCode)
+
+			defer res.Body.Close()
+			resBody, err := io.ReadAll(res.Body)
+			assert.NoError(err)
+
+			assert.Equal(string(tt.want.response), string(resBody))
 		})
 	}
 }
