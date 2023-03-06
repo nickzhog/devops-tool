@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/nickzhog/devops-tool/internal/server/compress"
@@ -29,6 +31,8 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.St
 
 	r.Use(compress.GzipCompress)
 	r.Use(compress.GzipDecompress)
+
+	r.Mount("/debug", middleware.Profiler())
 
 	r.Get("/", handlerData.IndexHandler)
 
