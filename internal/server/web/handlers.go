@@ -61,6 +61,7 @@ var templ = template.Must(template.New("index").Parse(
 	`,
 ))
 
+// IndexHandler - главная страница, отображает все доступные метрики и их значения
 func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.Storage.ExportToJSON(r.Context())
 	if err != nil {
@@ -100,6 +101,15 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	templ.Execute(w, m)
 }
 
+// Обработчик SelectFromBody используется для поиска метрики в хранилище
+// на основе данных, переданных в формате JSON в теле HTTP-запроса.
+//
+// Пример тела запроса:
+//
+//	{
+//		"id": "good_metric",
+//		"type": "gauge"
+//	}
 func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -130,6 +140,16 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	w.Write(metricElem.Marshal())
 }
 
+// Обработчик UpdateFromBody используется для обновления/создания метрики в хранилище
+// на основе данных, переданных в формате JSON в теле HTTP-запроса.
+//
+// Пример тела запроса:
+//
+//	{
+//		"id": "good_metric",
+//		"type": "gauge",
+//		"value": 10.5
+//	}
 func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -172,6 +192,11 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 	w.Write(mcurrent.Marshal())
 }
 
+// Обработчик SelectFromURL используется для поиска метрики в хранилище
+// на основе данных, переданных в URL-параметрах.
+//
+// Пример URL-запроса:
+// /value/gauge/good_metric
 func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if metricType != metric.CounterType && metricType != metric.GaugeType {
@@ -209,6 +234,11 @@ func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%v", v)))
 }
 
+// Обработчик UpdateFromURL используется для обновления/создания метрики в хранилище
+// на основе данных, переданных в URL-параметрах.
+//
+// Пример URL-запроса:
+// /value/gauge/good_metric/10.5
 func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	metricName := chi.URLParam(r, "name")
@@ -269,6 +299,23 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(valueString))
 }
 
+// Обработчик UpdateMany используется для обновления/создания множества метрик в хранилище
+// на основе данных, переданных в формате JSON в теле HTTP-запроса.
+//
+// Пример тела запроса:
+//
+//	[
+//		{
+//			"id": "good_metric",
+//			"type": "gauge",
+//			"value": 10.5
+//		},
+//		{
+//			"id": "good_metric2",
+//			"type": "counter",
+//			"value": 10
+//		}
+//	]
 func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {

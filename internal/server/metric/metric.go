@@ -28,6 +28,8 @@ type MetricType interface {
 	int64 | float64
 }
 
+// NewMetric создает метрику
+// В качестве значения можно передать типы float64 и int64
 func NewMetric[T MetricType](name, metricType string, value T) Metric {
 	var metric Metric
 	metric.ID = name
@@ -43,11 +45,15 @@ func NewMetric[T MetricType](name, metricType string, value T) Metric {
 	return metric
 }
 
+// Метод Marshal используется для сериализации метрики в формат JSON.
+// Функция возвращает срез байтов, содержащий сериализованную метрику.
 func (m Metric) Marshal() []byte {
 	data, _ := json.Marshal(m)
 	return data
 }
 
+// GetHash возвращает SHA-256 HMAC хэш строки, которая представляет данные метрики.
+// Хэш генерируется с использованием секретного ключа, передаваемого в качестве аргумента функции.
 func (m *Metric) GetHash(key string) string {
 	var data string
 	switch m.MType {
@@ -63,6 +69,8 @@ func (m *Metric) GetHash(key string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
+// Функция IsValidHash проверяет, совпадает ли HMAC-хэш,
+// вычисленный с использованием переданного ключа, с HMAC-хэшем, сохраненным в метрике.
 func (m *Metric) IsValidHash(key string) bool {
 	return m.GetHash(key) == m.Hash
 }
