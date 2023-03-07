@@ -23,6 +23,7 @@ func NewRepository(client postgres.Client, logger *logging.Logger, cfg *config.C
 	return &repository{
 		client: client,
 		logger: logger,
+		cfg:    cfg,
 	}
 }
 
