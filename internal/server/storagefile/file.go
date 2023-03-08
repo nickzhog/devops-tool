@@ -2,6 +2,8 @@ package storagefile
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"os"
 	"time"
 
@@ -83,7 +85,25 @@ func importFromFile(ctx context.Context, file string, storage metric.Storage) er
 		return err
 	}
 
-	err = storage.ImportFromJSON(ctx, data)
+	var metrics []metric.Metric
+	err = json.Unmarshal(data, &metrics)
+	if err != nil {
+		return err
+	}
 
-	return err
+	for _, v := range metrics {
+		_, err := storage.FindMetric(ctx, v.ID, v.MType)
+		if err != nil {
+			if !errors.Is(err, metric.ErrNoResult) {
+				return err
+			}
+			err = storage.UpsertMetric(ctx, v)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+	}
+
+	return nil
 }
