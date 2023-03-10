@@ -288,7 +288,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest)
 			return
 		}
-		metricElem = metric.NewMetric(metricName, metricType, value)
+		metricElem = metric.NewGaugeMetric(metricName, value)
 		valueString = fmt.Sprintf("%g", value)
 	case metric.CounterType:
 		value, err := strconv.ParseInt(metricValue, 10, 64)
@@ -298,7 +298,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 				http.StatusBadRequest)
 			return
 		}
-		metricElem = metric.NewMetric(metricName, metricType, value)
+		metricElem = metric.NewCounterMetric(metricName, value)
 		valueString = fmt.Sprintf("%v", value)
 
 		actualMetric, err := h.Storage.FindMetric(r.Context(), metricName, metricType)

@@ -6,23 +6,23 @@ import (
 
 func ExampleNewMetric() {
 	// Создание метрики типа counter
-	counter := NewMetric("requests", CounterType, int64(1))
+	counter := NewCounterMetric("requests", 123)
 	fmt.Printf("Counter: id: %s, type: %s, delta: %v\n",
 		counter.ID, counter.MType, *counter.Delta)
 
 	// Создание метрики типа gauge
-	gauge := NewMetric("response_time", GaugeType, float64(100))
+	gauge := NewGaugeMetric("response_time", 123.321)
 	fmt.Printf("Gauge: id: %s, type: %s, value: %g\n",
 		gauge.ID, gauge.MType, *gauge.Value)
 
 	// Output:
-	// Counter: id: requests, type: counter, delta: 1
-	// Gauge: id: response_time, type: gauge, value: 100
+	// Counter: id: requests, type: counter, delta: 123
+	// Gauge: id: response_time, type: gauge, value: 123.321
 }
 
 func ExampleMetric_GetHash() {
 	// Создание метрики типа gauge
-	gauge := NewMetric("response_time", GaugeType, float64(100))
+	gauge := NewGaugeMetric("response_time", 100)
 
 	// Вычисление HMAC-хэша с использованием ключа "secret"
 	hash := gauge.GetHash("secret")
@@ -35,7 +35,7 @@ func ExampleMetric_GetHash() {
 
 func ExampleMetric_IsValidHash() {
 	// Создание метрики типа gauge
-	gaugeMetric := NewMetric("response_time", GaugeType, float64(100))
+	gaugeMetric := NewGaugeMetric("response_time", 100)
 
 	// Вычисление HMAC-хэша с использованием ключа "secret"
 	gaugeMetric.Hash = gaugeMetric.GetHash("secret")

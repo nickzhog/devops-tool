@@ -3,7 +3,6 @@ package metric
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sync"
 
 	"github.com/nickzhog/devops-tool/internal/agent/config"
@@ -54,40 +53,40 @@ func (a *agent) SendMetrics(cfg *config.Config, logger *logging.Logger) {
 	for k, v := range a.GaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, nil, http.MethodPost)
+		sendRequest(url, nil)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		metric := metric.NewMetric(k, metric.GaugeType, v)
+		metric := metric.NewGaugeMetric(k, v)
 		if cfg.Settings.Key != "" {
 			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
 		}
 		body, _ := json.Marshal(metric)
-		answer, err = sendRequest(url, body, http.MethodPost)
+		answer, err = sendRequest(url, body)
 	}
 
 	for k, v := range a.CounterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", cfg.Settings.Address, k, v)
 
-		sendRequest(url, nil, http.MethodPost)
+		sendRequest(url, nil)
 
 		////
 
 		url = fmt.Sprintf("%s/update", cfg.Settings.Address)
-		metric := metric.NewMetric(k, metric.CounterType, v)
+		metric := metric.NewCounterMetric(k, v)
 		if cfg.Settings.Key != "" {
 			metric.Hash = string(metric.GetHash(cfg.Settings.Key))
 		}
 		body, _ := json.Marshal(metric)
-		answer, err = sendRequest(url, body, http.MethodPost)
+		answer, err = sendRequest(url, body)
 	}
 
 	logger.Tracef("metrics sended to: %s, last err: %v, last answer: %s", cfg.Settings.Address, err, answer)
 
 	if len(jsonData) > 0 {
 		url := fmt.Sprintf("%s/updates/", cfg.Settings.Address)
-		_, err = sendRequest(url, jsonData, http.MethodPost)
+		_, err = sendRequest(url, jsonData)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -123,10 +122,10 @@ func (a *agent) ExportToJSON() []byte {
 
 	metrics := make([]metric.Metric, 0)
 	for k, v := range a.GaugeMetrics {
-		metrics = append(metrics, metric.NewMetric(k, metric.GaugeType, v))
+		metrics = append(metrics, metric.NewGaugeMetric(k, v))
 	}
 	for k, v := range a.CounterMetrics {
-		metrics = append(metrics, metric.NewMetric(k, metric.CounterType, v))
+		metrics = append(metrics, metric.NewCounterMetric(k, v))
 	}
 	ans, err := json.Marshal(metrics)
 	if err != nil {

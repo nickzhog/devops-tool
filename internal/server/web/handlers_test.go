@@ -38,11 +38,11 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 		{
 			name: "valid gauge metric",
 			request: request{
-				data: metric.NewMetric("test_gauge", metric.GaugeType, float64(15.1)).Marshal(),
+				data: metric.NewGaugeMetric("test_gauge", 15.1).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.NewMetric("test_gauge", metric.GaugeType, float64(15.1)).Marshal(),
+				response:    metric.NewGaugeMetric("test_gauge", 15.1).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -60,22 +60,22 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 		{
 			name: "valid counter",
 			request: request{
-				data: metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
+				data: metric.NewCounterMetric("good_counter", 10).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.NewMetric("good_counter", metric.CounterType, int64(10)).Marshal(),
+				response:    metric.NewCounterMetric("good_counter", 10).Marshal(),
 				contentType: "application/json",
 			},
 		},
 		{
 			name: "counter increment",
 			request: request{
-				data: metric.NewMetric("good_counter", metric.CounterType, int64(1)).Marshal(),
+				data: metric.NewCounterMetric("good_counter", 1).Marshal(),
 			},
 			want: want{
 				code:        http.StatusOK,
-				response:    metric.NewMetric("good_counter", metric.CounterType, int64(11)).Marshal(),
+				response:    metric.NewCounterMetric("good_counter", 11).Marshal(),
 				contentType: "application/json",
 			},
 		},
@@ -131,7 +131,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 	}{
 		{
 			name:   "gauge test",
-			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			metric: metric.NewGaugeMetric("good_gauge", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`{"id":"good_gauge","type":"gauge", "value": 10}`),
@@ -139,7 +139,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 		},
 		{
 			name:   "counter test",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`{"id":"good_counter","type":"counter", "delta": 10}`),
@@ -147,7 +147,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 		},
 		{
 			name:   "counter increment",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`{"id":"good_counter","type":"counter", "delta": 20}`),
@@ -261,7 +261,7 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 	}{
 		{
 			name:   "gauge test",
-			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(8.2)),
+			metric: metric.NewGaugeMetric("good_gauge", 8.2),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`8.2`),
@@ -269,7 +269,7 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 		},
 		{
 			name:   "counter test",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(8)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`8`),
@@ -277,18 +277,10 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 		},
 		{
 			name:   "counter increment",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(8)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`16`),
-			},
-		},
-		{
-			name:   "wrong metric type",
-			metric: metric.NewMetric("bad_metric", "wrong_type", int64(8)),
-			want: want{
-				code:     http.StatusNotImplemented,
-				response: []byte(`{"error":"wrong metric type"}`),
 			},
 		},
 	}
@@ -343,7 +335,7 @@ func TestHandler_SelectFromURL(t *testing.T) {
 	}{
 		{
 			name:   "gauge test",
-			metric: metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			metric: metric.NewGaugeMetric("good_gauge", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`10`),
@@ -351,7 +343,7 @@ func TestHandler_SelectFromURL(t *testing.T) {
 		},
 		{
 			name:   "counter test",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`10`),
@@ -359,7 +351,7 @@ func TestHandler_SelectFromURL(t *testing.T) {
 		},
 		{
 			name:   "counter increment",
-			metric: metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
 				response: []byte(`20`),

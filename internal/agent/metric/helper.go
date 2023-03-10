@@ -11,12 +11,12 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-func sendRequest(url string, postData []byte, method string) ([]byte, error) {
+func sendRequest(url string, postData []byte) ([]byte, error) {
 	if !strings.HasPrefix(url, "http") {
 		url = "http://" + url
 	}
 
-	request, err := http.NewRequest(strings.ToUpper(method), url, bytes.NewBuffer(postData))
+	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(postData))
 	if err != nil {
 		return nil, err
 	}

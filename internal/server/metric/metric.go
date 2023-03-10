@@ -24,25 +24,22 @@ type Metric struct {
 	Hash  string   `json:"hash,omitempty"`  // значение хеш-функции
 }
 
-type MetricType interface {
-	int64 | float64
+// NewGaugeMetric создает метрику c типом "gauge"
+func NewGaugeMetric(name string, value float64) Metric {
+	return Metric{
+		ID:    name,
+		MType: GaugeType,
+		Value: &value,
+	}
 }
 
-// NewMetric создает метрику
-// В качестве значения можно передать типы float64 и int64
-func NewMetric[T MetricType](name, metricType string, value T) Metric {
-	var metric Metric
-	metric.ID = name
-	metric.MType = metricType
-	switch metricType {
-	case CounterType:
-		val := any(value).(int64)
-		metric.Delta = &val
-	case GaugeType:
-		val := any(value).(float64)
-		metric.Value = &val
+// NewCounterMetric создает метрику c типом "counter"
+func NewCounterMetric(name string, value int64) Metric {
+	return Metric{
+		ID:    name,
+		MType: GaugeType,
+		Delta: &value,
 	}
-	return metric
 }
 
 // Метод Marshal используется для сериализации метрики в формат JSON.

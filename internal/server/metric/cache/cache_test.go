@@ -18,17 +18,17 @@ func TestMemStorage_Upsert(t *testing.T) {
 	}{
 		{
 			name:       "counter metric",
-			metric:     metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric:     metric.NewCounterMetric("good_counter", 10),
 			wantResult: int64(10),
 		},
 		{
 			name:       "increment test",
-			metric:     metric.NewMetric("good_counter", metric.CounterType, int64(10)),
+			metric:     metric.NewCounterMetric("good_counter", 10),
 			wantResult: int64(20),
 		},
 		{
 			name:       "gauge metric",
-			metric:     metric.NewMetric("good_gauge", metric.GaugeType, float64(10)),
+			metric:     metric.NewGaugeMetric("good_gauge", 10),
 			wantResult: float64(10),
 		},
 	}

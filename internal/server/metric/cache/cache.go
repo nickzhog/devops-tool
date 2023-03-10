@@ -83,11 +83,11 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 
 	var metrics []metric.Metric
 	for k, v := range m.GaugeMetrics {
-		metrics = append(metrics, metric.NewMetric(k, metric.GaugeType, v))
+		metrics = append(metrics, metric.NewGaugeMetric(k, v))
 	}
 
 	for k, v := range m.CounterMetrics {
-		metrics = append(metrics, metric.NewMetric(k, metric.CounterType, v))
+		metrics = append(metrics, metric.NewCounterMetric(k, v))
 	}
 
 	if len(metrics) < 1 {
