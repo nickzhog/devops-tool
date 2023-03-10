@@ -27,7 +27,7 @@ func NewStorageFile(ctx context.Context, cfg *config.Config, logger *logging.Log
 	if cfg.Settings.Restore {
 		err := importFromFile(ctx, cfg.Settings.StoreFile, storage)
 		if err != nil {
-			logger.Error(err)
+			logger.Tracef("err: %v", err)
 		}
 	}
 
@@ -75,6 +75,8 @@ func (s *storageFile) updateFile(ctx context.Context) (err error) {
 		return
 	}
 	_, err = s.file.Write(data)
+
+	// s.logger.Traceln("storage file updated")
 
 	return
 }

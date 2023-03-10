@@ -24,6 +24,10 @@ func NewRepository(client *redis.Client, logger *logging.Logger, cfg *config.Con
 	}
 }
 
+func (r *repository) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	result, err := r.client.Get(ctx, prepareKey(name, mtype)).Bytes()
 	if err != nil {

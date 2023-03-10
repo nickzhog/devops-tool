@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"crypto/hmac"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
@@ -17,7 +19,7 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
+func (h *handler) showError(w http.ResponseWriter, err string, status int) {
 	// h.Logger.Error(err)
 	m := map[string]string{
 		"error": err,
@@ -28,10 +30,18 @@ func (h *Handler) showError(w http.ResponseWriter, err string, status int) {
 	w.Write(data)
 }
 
-type Handler struct {
+type handler struct {
 	Storage metric.Storage
 	Logger  *logging.Logger
 	Cfg     *config.Config
+}
+
+func NewHandlerData(logger *logging.Logger, cfg *config.Config, storage metric.Storage) *handler {
+	return &handler{
+		Logger:  logger,
+		Storage: storage,
+		Cfg:     cfg,
+	}
 }
 
 type ForTemplate struct {
@@ -61,8 +71,19 @@ var templ = template.Must(template.New("index").Parse(
 	`,
 ))
 
+// Обработчик проверяет доступность хранилища
+func (h *handler) PingHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*2)
+	defer cancel()
+	err := h.Storage.Ping(ctx)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	w.Write(nil)
+}
+
 // IndexHandler - главная страница, отображает все доступные метрики и их значения
-func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
+func (h *handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.Storage.ExportToJSON(r.Context())
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusInternalServerError)
@@ -110,7 +131,7 @@ func (h *Handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 //		"id": "good_metric",
 //		"type": "gauge"
 //	}
-func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
+func (h *handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.showError(w, "cant get body", http.StatusBadRequest)
@@ -150,7 +171,7 @@ func (h *Handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 //		"type": "gauge",
 //		"value": 10.5
 //	}
-func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
+func (h *handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.showError(w, "cant get body", http.StatusBadRequest)
@@ -171,6 +192,8 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	h.Logger.Tracef("UpdateFromBody: %s", body)
 
 	err = h.Storage.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
@@ -197,7 +220,7 @@ func (h *Handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 //
 // Пример URL-запроса:
 // /value/gauge/good_metric
-func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
+func (h *handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if metricType != metric.CounterType && metricType != metric.GaugeType {
 		h.showError(w,
@@ -239,7 +262,7 @@ func (h *Handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 //
 // Пример URL-запроса:
 // /value/gauge/good_metric/10.5
-func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
+func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	metricName := chi.URLParam(r, "name")
 	if len(metricName) < 1 {
@@ -316,7 +339,7 @@ func (h *Handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 //			"value": 10
 //		}
 //	]
-func (h *Handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
+func (h *handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.showError(w, "cant get body", http.StatusBadRequest)

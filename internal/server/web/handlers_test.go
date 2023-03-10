@@ -13,15 +13,13 @@ import (
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
+	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHandler_UpdateFromBody(t *testing.T) {
-	h := &Handler{
-		Storage: cache.NewMemStorage(),
-		Logger:  nil,
-		Cfg:     &config.Config{},
-	}
+	h := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+
 	h.Cfg.Settings.Key = ""
 
 	type request struct {
@@ -116,11 +114,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 }
 
 func TestHandler_SelectFromBody(t *testing.T) {
-	h := &Handler{
-		Storage: cache.NewMemStorage(),
-		Logger:  nil,
-		Cfg:     &config.Config{},
-	}
+	h := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
 	h.Cfg.Settings.Key = ""
 
 	nulFloat := float64(0)
@@ -188,10 +182,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 }
 
 func TestHandler_UpdateMany(t *testing.T) {
-	handler := &Handler{
-		Logger: nil,
-		Cfg:    &config.Config{},
-	}
+	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
 	handler.Cfg.Settings.Key = ""
 
 	tests := []struct {
@@ -255,11 +246,8 @@ func TestHandler_UpdateMany(t *testing.T) {
 }
 
 func TestHandler_UpdateFromURL(t *testing.T) {
-	handler := &Handler{
-		Storage: cache.NewMemStorage(),
-		Logger:  nil,
-		Cfg:     &config.Config{},
-	}
+	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+
 	handler.Cfg.Settings.Key = ""
 
 	type want struct {
@@ -341,11 +329,7 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 }
 
 func TestHandler_SelectFromURL(t *testing.T) {
-	handler := &Handler{
-		Storage: cache.NewMemStorage(),
-		Logger:  nil,
-		Cfg:     &config.Config{},
-	}
+	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
 	handler.Cfg.Settings.Key = ""
 
 	type want struct {

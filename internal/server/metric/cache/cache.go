@@ -23,6 +23,10 @@ func NewMemStorage() *memStorage {
 	}
 }
 
+func (m *memStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (m *memStorage) UpsertMetric(ctx context.Context, metricElem metric.Metric) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

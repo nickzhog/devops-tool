@@ -17,11 +17,8 @@ import (
 )
 
 func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.Storage) *http.Server {
-	handlerData := &Handler{
-		Storage: storage,
-		Logger:  logger,
-		Cfg:     cfg,
-	}
+
+	handlerData := NewHandlerData(logger, cfg, storage)
 
 	r := chi.NewRouter()
 
@@ -33,6 +30,8 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.St
 	r.Use(compress.GzipDecompress)
 
 	r.Mount("/debug", middleware.Profiler())
+
+	r.Get("/ping", handlerData.PingHandler)
 
 	r.Get("/", handlerData.IndexHandler)
 

@@ -7,4 +7,5 @@ type Storage interface {
 	FindMetric(ctx context.Context, name, mtype string) (Metric, error)
 	ExportToJSON(ctx context.Context) ([]byte, error)
 	ImportFromJSON(ctx context.Context, data []byte) error
+	Ping(ctx context.Context) error
 }

@@ -27,6 +27,10 @@ func NewRepository(client postgres.Client, logger *logging.Logger, cfg *config.C
 	}
 }
 
+func (r *repository) Ping(ctx context.Context) error {
+	return r.client.Ping(ctx)
+}
+
 func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
 	q := `
 		SELECT
