@@ -4,20 +4,23 @@ import (
 	"fmt"
 )
 
-func ExampleNewMetric() {
-	// Создание метрики типа counter
-	counter := NewCounterMetric("requests", 123)
-	fmt.Printf("Counter: id: %s, type: %s, delta: %v\n",
-		counter.ID, counter.MType, *counter.Delta)
-
+func ExampleNewGaugeMetric() {
 	// Создание метрики типа gauge
 	gauge := NewGaugeMetric("response_time", 123.321)
 	fmt.Printf("Gauge: id: %s, type: %s, value: %g\n",
 		gauge.ID, gauge.MType, *gauge.Value)
 
 	// Output:
-	// Counter: id: requests, type: counter, delta: 123
 	// Gauge: id: response_time, type: gauge, value: 123.321
+}
+func ExampleNewCounterMetric() {
+	// Создание метрики типа counter
+	counter := NewCounterMetric("requests", 123)
+	fmt.Printf("Counter: id: %s, type: %s, delta: %v\n",
+		counter.ID, counter.MType, *counter.Delta)
+
+	// Output:
+	// Counter: id: requests, type: counter, delta: 123
 }
 
 func ExampleMetric_GetHash() {
