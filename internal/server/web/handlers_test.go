@@ -272,7 +272,7 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
-				response: []byte(`8`),
+				response: []byte(`10`),
 			},
 		},
 		{
@@ -280,7 +280,7 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 			metric: metric.NewCounterMetric("good_counter", 10),
 			want: want{
 				code:     http.StatusOK,
-				response: []byte(`16`),
+				response: []byte(`20`),
 			},
 		},
 	}
