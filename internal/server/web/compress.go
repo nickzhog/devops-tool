@@ -1,4 +1,4 @@
-package compress
+package web
 
 import (
 	"compress/gzip"
@@ -16,7 +16,7 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func GzipCompress(next http.Handler) http.Handler {
+func gzipCompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 			next.ServeHTTP(w, r)
@@ -35,7 +35,7 @@ func GzipCompress(next http.Handler) http.Handler {
 	})
 }
 
-func GzipDecompress(next http.Handler) http.Handler {
+func gzipDecompress(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Encoding") == "gzip" {
 			gzReader, err := gzip.NewReader(r.Body)
