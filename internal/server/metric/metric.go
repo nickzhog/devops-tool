@@ -42,7 +42,7 @@ func NewCounterMetric(name string, value int64) Metric {
 	}
 }
 
-// Метод Marshal используется для сериализации метрики в формат JSON.
+// Marshal используется для сериализации метрики в формат JSON.
 // Функция возвращает срез байтов, содержащий сериализованную метрику.
 func (m Metric) Marshal() []byte {
 	data, _ := json.Marshal(m)
@@ -66,7 +66,7 @@ func (m *Metric) GetHash(key string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// Функция IsValidHash проверяет, совпадает ли HMAC-хэш,
+// IsValidHash проверяет, совпадает ли HMAC-хэш,
 // вычисленный с использованием переданного ключа, с HMAC-хэшем, сохраненным в метрике.
 func (m *Metric) IsValidHash(key string) bool {
 	return m.GetHash(key) == m.Hash
