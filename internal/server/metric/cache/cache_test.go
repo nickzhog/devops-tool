@@ -35,11 +35,12 @@ func TestMemStorage_Upsert(t *testing.T) {
 	ctx := context.Background()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
 
-			storage.UpsertMetric(ctx, tt.metric)
+			err := storage.UpsertMetric(ctx, tt.metric)
+			assert.NoError(err)
 
 			metricElem, err := storage.FindMetric(ctx, tt.metric.ID, tt.metric.MType)
-			assert := assert.New(t)
 
 			switch tt.metric.MType {
 			case metric.CounterType:

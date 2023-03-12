@@ -11,15 +11,15 @@ import (
 
 type memStorage struct {
 	mutex          *sync.RWMutex
-	GaugeMetrics   map[string]float64 `json:"gauge_metrics,omitempty"`
-	CounterMetrics map[string]int64   `json:"counter_metrics,omitempty"`
+	gaugeMetrics   map[string]float64
+	counterMetrics map[string]int64
 }
 
 func NewMemStorage() *memStorage {
 	return &memStorage{
 		mutex:          new(sync.RWMutex),
-		GaugeMetrics:   make(map[string]float64),
-		CounterMetrics: make(map[string]int64),
+		gaugeMetrics:   make(map[string]float64),
+		counterMetrics: make(map[string]int64),
 	}
 }
 
@@ -33,15 +33,15 @@ func (m *memStorage) UpsertMetric(ctx context.Context, metricElem metric.Metric)
 
 	switch metricElem.MType {
 	case metric.GaugeType:
-		m.GaugeMetrics[metricElem.ID] = *metricElem.Value
+		m.gaugeMetrics[metricElem.ID] = *metricElem.Value
 	case metric.CounterType:
 		delta := *metricElem.Delta
-		oldDelta, exist := m.CounterMetrics[metricElem.ID]
+		oldDelta, exist := m.counterMetrics[metricElem.ID]
 		if exist {
 			delta += oldDelta
 			metricElem.Delta = &delta
 		}
-		m.CounterMetrics[metricElem.ID] = delta
+		m.counterMetrics[metricElem.ID] = delta
 
 	default:
 		return errors.New("wrong metric type")
@@ -63,10 +63,10 @@ func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric
 
 	switch mtype {
 	case metric.GaugeType:
-		value, ok = m.GaugeMetrics[name]
+		value, ok = m.gaugeMetrics[name]
 		answer.Value = &value
 	case metric.CounterType:
-		delta, ok = m.CounterMetrics[name]
+		delta, ok = m.counterMetrics[name]
 		answer.Delta = &delta
 	}
 
@@ -82,11 +82,11 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 	defer m.mutex.RUnlock()
 
 	var metrics []metric.Metric
-	for k, v := range m.GaugeMetrics {
+	for k, v := range m.gaugeMetrics {
 		metrics = append(metrics, metric.NewGaugeMetric(k, v))
 	}
 
-	for k, v := range m.CounterMetrics {
+	for k, v := range m.counterMetrics {
 		metrics = append(metrics, metric.NewCounterMetric(k, v))
 	}
 
