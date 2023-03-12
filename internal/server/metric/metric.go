@@ -37,7 +37,7 @@ func NewGaugeMetric(name string, value float64) Metric {
 func NewCounterMetric(name string, value int64) Metric {
 	return Metric{
 		ID:    name,
-		MType: GaugeType,
+		MType: CounterType,
 		Delta: &value,
 	}
 }
