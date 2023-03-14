@@ -12,11 +12,11 @@ import (
 	"github.com/nickzhog/devops-tool/internal/server/metric/db"
 	"github.com/nickzhog/devops-tool/internal/server/metric/redis"
 	"github.com/nickzhog/devops-tool/internal/server/migration"
-	redis_client "github.com/nickzhog/devops-tool/internal/server/redis"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
 	"github.com/nickzhog/devops-tool/internal/server/web"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/nickzhog/devops-tool/pkg/postgres"
+	redis_client "github.com/nickzhog/devops-tool/pkg/redis"
 )
 
 func main() {
@@ -53,7 +53,10 @@ func main() {
 
 	case cfg.Settings.RedisStorage.Addr != "":
 		logger.Trace("redis storage")
-		redisClient := redis_client.NewClient(ctx, cfg)
+		redisClient := redis_client.NewClient(ctx,
+			cfg.Settings.RedisStorage.Addr,
+			cfg.Settings.RedisStorage.Password,
+			cfg.Settings.RedisStorage.DB)
 		storage = redis.NewRepository(redisClient, logger, cfg)
 
 	default:
