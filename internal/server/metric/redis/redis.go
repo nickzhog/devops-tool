@@ -25,7 +25,9 @@ func NewRepository(client *redis.Client, logger *logging.Logger, cfg *config.Con
 }
 
 func (r *repository) Ping(ctx context.Context) error {
-	return nil
+	_, err := r.client.Ping(ctx).Result()
+
+	return err
 }
 
 func (r *repository) FindMetric(ctx context.Context, name, mtype string) (metric.Metric, error) {
