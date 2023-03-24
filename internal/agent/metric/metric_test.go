@@ -82,7 +82,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 			//////////
 			assert := assert.New(t)
 
-			agentStorage := NewAgent()
+			agentStorage := NewAgent(cfg, logger)
 			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
 			if tt.whantErr {
 				assert.Error(err)
@@ -90,7 +90,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			agentStorage.SendMetrics(cfg, logger)
+			agentStorage.SendMetrics()
 
 			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
 			assert.NoError(err)
@@ -155,7 +155,7 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 			//////////
 			assert := assert.New(t)
 
-			agentStorage := NewAgent()
+			agentStorage := NewAgent(cfg, logger)
 			err := agentStorage.ImportFromJSON([]byte(tt.metrics))
 			if tt.whantErr {
 				assert.Error(err)
@@ -163,7 +163,7 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			agentStorage.SendMetrics(cfg, logger)
+			agentStorage.SendMetrics()
 
 			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
 			assert.NoError(err)

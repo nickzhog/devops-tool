@@ -28,10 +28,10 @@ func main() {
 		cancel()
 	}()
 
-	agent := metric.NewAgent()
+	agent := metric.NewAgent(cfg, logger)
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 	go func() {
 		t := time.NewTicker(cfg.Settings.PollInterval)
 		defer wg.Done()
@@ -46,6 +46,7 @@ func main() {
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
 		t := time.NewTicker(cfg.Settings.ReportInterval)
 		defer wg.Done()
@@ -55,10 +56,11 @@ func main() {
 				logger.Trace("send metrics is stopped")
 				return
 			case <-t.C:
-				agent.SendMetrics(cfg, logger)
+				agent.SendMetrics()
 			}
 		}
 	}()
 
 	wg.Wait()
+	logger.Trace("graceful shutdown")
 }

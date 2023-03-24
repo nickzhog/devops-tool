@@ -2,21 +2,37 @@ package metric
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/shirou/gopsutil/mem"
 )
 
-func sendRequest(url string, postData []byte) ([]byte, error) {
+func (a *agent) sendRequest(url string, postData []byte) ([]byte, error) {
 	if !strings.HasPrefix(url, "http") {
 		url = "http://" + url
 	}
 
-	request, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(postData))
+	if a.publicKey != nil && len(postData) > 0 {
+		newPostData, err := encryption.EncryptData(postData, a.publicKey)
+		if err != nil {
+			a.logger.Error(err)
+			return nil, err
+		}
+
+		postData = newPostData
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(postData))
 	if err != nil {
 		return nil, err
 	}
