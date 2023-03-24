@@ -25,7 +25,9 @@ type Config struct {
 		Restore       bool          `env:"RESTORE"`
 		StoreInterval time.Duration `env:"STORE_INTERVAL"`
 
-		Key string `env:"ENCRYPTION_KEY"`
+		Key string `env:"ENCRYPTION_KEY"` // ключ для вычисления хэша метрики
+
+		CryptoKey string `env:"CRYPTO_KEY"` // путь до файла с приватным ключем (ассиметричное шифрование)
 	}
 }
 
@@ -42,7 +44,10 @@ func GetConfig() *Config {
 	flag.StringVar(&cfg.Settings.StoreFile, "f", "/tmp/devops-metrics-db.json", "file path for save and load metrics")
 	flag.BoolVar(&cfg.Settings.Restore, "r", true, "restore latest values")
 	flag.DurationVar(&cfg.Settings.StoreInterval, "i", time.Second, "interval for file update")
-	flag.StringVar(&cfg.Settings.Key, "k", "", "encription key")
+
+	flag.StringVar(&cfg.Settings.Key, "k", "", "key for calculate hash of metric")
+
+	flag.StringVar(&cfg.Settings.CryptoKey, "crypto-key", "", "private.key path for RSA encryption")
 
 	flag.Parse()
 

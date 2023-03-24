@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
@@ -27,6 +28,14 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.St
 
 	r.Use(gzipCompress)
 	r.Use(gzipDecompress)
+
+	if cfg.Settings.CryptoKey != "" {
+		key, err := encryption.NewPrivateKey(cfg.Settings.CryptoKey)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		r.Use(requestDecryptMiddleWare(key, logger))
+	}
 
 	r.Mount("/debug", middleware.Profiler())
 
