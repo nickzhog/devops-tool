@@ -8,8 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/nickzhog/devops-tool/pkg/postgres"
 )
 

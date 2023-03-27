@@ -15,8 +15,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
 func (h *handler) showError(w http.ResponseWriter, err string, status int) {
@@ -31,12 +32,12 @@ func (h *handler) showError(w http.ResponseWriter, err string, status int) {
 }
 
 type handler struct {
-	Storage metric.Storage
+	Storage service.Storage
 	Logger  *logging.Logger
 	Cfg     *config.Config
 }
 
-func NewHandlerData(logger *logging.Logger, cfg *config.Config, storage metric.Storage) *handler {
+func NewHandlerData(logger *logging.Logger, cfg *config.Config, storage service.Storage) *handler {
 	return &handler{
 		Logger:  logger,
 		Storage: storage,

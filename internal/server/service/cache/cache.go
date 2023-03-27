@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
 type memStorage struct {

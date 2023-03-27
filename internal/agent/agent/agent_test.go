@@ -9,9 +9,9 @@ import (
 
 	"github.com/jarcoal/httpmock"
 	"github.com/nickzhog/devops-tool/internal/agent/config"
-	serverMetric "github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
+	"github.com/nickzhog/devops-tool/internal/server/service/cache"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,7 +60,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err
 					}
 
-					var elem serverMetric.Metric
+					var elem metric.Metric
 					err = json.Unmarshal(body, &elem)
 					if err != nil {
 						return httpmock.NewStringResponse(http.StatusBadRequest, ""), err

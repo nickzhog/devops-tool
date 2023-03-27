@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/redis/go-redis/v9"
 )
 

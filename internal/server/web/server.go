@@ -11,12 +11,12 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func PrepareServer(logger *logging.Logger, cfg *config.Config, storage metric.Storage) *http.Server {
+func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.Storage) *http.Server {
 
 	handlerData := NewHandlerData(logger, cfg, storage)
 

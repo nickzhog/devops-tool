@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/stretchr/testify/assert"
 )
 

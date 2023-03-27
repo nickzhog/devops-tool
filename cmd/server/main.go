@@ -8,11 +8,11 @@ import (
 	"syscall"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
-	"github.com/nickzhog/devops-tool/internal/server/metric/db"
-	"github.com/nickzhog/devops-tool/internal/server/metric/redis"
 	"github.com/nickzhog/devops-tool/internal/server/migration"
+	"github.com/nickzhog/devops-tool/internal/server/service"
+	"github.com/nickzhog/devops-tool/internal/server/service/cache"
+	"github.com/nickzhog/devops-tool/internal/server/service/db"
+	"github.com/nickzhog/devops-tool/internal/server/service/redis"
 	"github.com/nickzhog/devops-tool/internal/server/storagefile"
 	"github.com/nickzhog/devops-tool/internal/server/web"
 	"github.com/nickzhog/devops-tool/pkg/logging"
@@ -36,7 +36,7 @@ func main() {
 		cancel()
 	}()
 
-	var storage metric.Storage
+	var storage service.Storage
 
 	switch {
 

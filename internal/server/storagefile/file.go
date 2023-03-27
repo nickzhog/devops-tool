@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
 type StorageFile interface {
@@ -20,10 +21,10 @@ type storageFile struct {
 	file     *os.File
 	interval time.Duration
 	logger   *logging.Logger
-	storage  metric.Storage
+	storage  service.Storage
 }
 
-func NewStorageFile(ctx context.Context, cfg *config.Config, logger *logging.Logger, storage metric.Storage) StorageFile {
+func NewStorageFile(ctx context.Context, cfg *config.Config, logger *logging.Logger, storage service.Storage) StorageFile {
 	if cfg.Settings.Restore {
 		err := importFromFile(ctx, cfg.Settings.StoreFile, storage)
 		if err != nil {
@@ -81,7 +82,7 @@ func (s *storageFile) updateFile(ctx context.Context) (err error) {
 	return
 }
 
-func importFromFile(ctx context.Context, file string, storage metric.Storage) error {
+func importFromFile(ctx context.Context, file string, storage service.Storage) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return err

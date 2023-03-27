@@ -11,9 +11,9 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
-	"github.com/nickzhog/devops-tool/internal/server/metric/cache"
+	"github.com/nickzhog/devops-tool/internal/server/service/cache"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/stretchr/testify/assert"
 )
 

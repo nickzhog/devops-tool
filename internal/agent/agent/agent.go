@@ -8,14 +8,16 @@ import (
 	"sync"
 
 	"github.com/nickzhog/devops-tool/internal/agent/config"
-	"github.com/nickzhog/devops-tool/internal/server/metric"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/pkg/metric"
 )
+
+var _ Agent = (*agent)(nil)
 
 type Agent interface {
 	UpdateMetrics()
-	SendMetrics()
+	SendMetrics(ctx context.Context)
 	ExportToJSON() []byte
 	ImportFromJSON(data []byte) error
 }
