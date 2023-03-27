@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/metric"
@@ -28,7 +29,7 @@ func main() {
 	defer cancel()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		oscall := <-c
 		logger.Tracef("system call:%+v", oscall)
