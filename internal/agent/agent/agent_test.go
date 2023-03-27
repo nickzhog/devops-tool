@@ -1,4 +1,4 @@
-package metric
+package agent
 
 import (
 	"context"
@@ -90,7 +90,7 @@ func TestMetrics_SendMetrics(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			agentStorage.SendMetrics()
+			agentStorage.SendMetrics(context.Background())
 
 			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
 			assert.NoError(err)
@@ -163,7 +163,7 @@ func TestMetrics_SendMetricsBatch(t *testing.T) {
 			}
 			assert.NoError(err)
 
-			agentStorage.SendMetrics()
+			agentStorage.SendMetrics(context.Background())
 
 			serverJSON, err := mockStorage.ExportToJSON(context.TODO())
 			assert.NoError(err)

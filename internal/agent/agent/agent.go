@@ -1,6 +1,7 @@
-package metric
+package agent
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -59,7 +60,7 @@ func (a *agent) UpdateMetrics() {
 	a.counterMetrics["PollCount"]++
 }
 
-func (a *agent) SendMetrics() {
+func (a *agent) SendMetrics(ctx context.Context) {
 	var url string
 	var answer []byte
 	var err error
@@ -72,7 +73,7 @@ func (a *agent) SendMetrics() {
 	for k, v := range a.gaugeMetrics {
 		url = fmt.Sprintf("%s/update/gauge/%s/%v", a.cfg.Settings.Address, k, v)
 
-		a.sendRequest(url, nil)
+		a.sendRequest(ctx, url, nil)
 
 		////
 
@@ -82,13 +83,13 @@ func (a *agent) SendMetrics() {
 			metric.Hash = string(metric.GetHash(a.cfg.Settings.Key))
 		}
 		body, _ := json.Marshal(metric)
-		answer, err = a.sendRequest(url, body)
+		answer, err = a.sendRequest(ctx, url, body)
 	}
 
 	for k, v := range a.counterMetrics {
 		url = fmt.Sprintf("%s/update/counter/%s/%v", a.cfg.Settings.Address, k, v)
 
-		a.sendRequest(url, nil)
+		a.sendRequest(ctx, url, nil)
 
 		////
 
@@ -98,14 +99,14 @@ func (a *agent) SendMetrics() {
 			metric.Hash = string(metric.GetHash(a.cfg.Settings.Key))
 		}
 		body, _ := json.Marshal(metric)
-		answer, err = a.sendRequest(url, body)
+		answer, err = a.sendRequest(ctx, url, body)
 	}
 
 	a.logger.Tracef("metrics sended to: %s, last err: %v, last answer: %s", a.cfg.Settings.Address, err, answer)
 
 	if len(jsonData) > 0 {
 		url := fmt.Sprintf("%s/updates/", a.cfg.Settings.Address)
-		_, err = a.sendRequest(url, jsonData)
+		_, err = a.sendRequest(ctx, url, jsonData)
 		if err != nil {
 			a.logger.Error(err)
 		}

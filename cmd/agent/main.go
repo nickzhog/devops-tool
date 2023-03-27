@@ -5,10 +5,11 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/nickzhog/devops-tool/internal/agent/agent"
 	"github.com/nickzhog/devops-tool/internal/agent/config"
-	"github.com/nickzhog/devops-tool/internal/agent/metric"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
@@ -21,14 +22,14 @@ func main() {
 	defer cancel()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		oscall := <-c
 		logger.Tracef("system call:%+v", oscall)
 		cancel()
 	}()
 
-	agent := metric.NewAgent(cfg, logger)
+	a := agent.NewAgent(cfg, logger)
 
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
@@ -41,7 +42,7 @@ func main() {
 				logger.Trace("update metrics is stopped")
 				return
 			case <-t.C:
-				agent.UpdateMetrics()
+				a.UpdateMetrics()
 			}
 		}
 	}()
@@ -56,7 +57,7 @@ func main() {
 				logger.Trace("send metrics is stopped")
 				return
 			case <-t.C:
-				agent.SendMetrics()
+				a.SendMetrics(ctx)
 			}
 		}
 	}()

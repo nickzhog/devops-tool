@@ -1,4 +1,4 @@
-package metric
+package agent
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 )
 
-func (a *agent) sendRequest(url string, postData []byte) ([]byte, error) {
+func (a *agent) sendRequest(ctx context.Context, url string, postData []byte) ([]byte, error) {
 	if !strings.HasPrefix(url, "http") {
 		url = "http://" + url
 	}
@@ -29,7 +29,7 @@ func (a *agent) sendRequest(url string, postData []byte) ([]byte, error) {
 		postData = newPostData
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*2)
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(postData))
