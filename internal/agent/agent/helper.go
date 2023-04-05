@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"runtime"
 	"strings"
@@ -36,6 +37,12 @@ func (a *agent) sendRequest(ctx context.Context, url string, postData []byte) ([
 	if err != nil {
 		return nil, err
 	}
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Add("X-Real-IP", addrs[0].String())
 
 	res, err := http.DefaultClient.Do(request)
 	if err != nil {
