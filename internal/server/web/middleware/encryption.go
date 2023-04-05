@@ -1,4 +1,4 @@
-package web
+package middleware
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func requestDecryptMiddleWare(key *rsa.PrivateKey, logger *logging.Logger) func(next http.Handler) http.Handler {
+func RequestDecryptMiddleWare(key *rsa.PrivateKey, logger *logging.Logger) func(next http.Handler) http.Handler {
 	fn := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)

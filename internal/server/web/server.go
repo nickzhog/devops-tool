@@ -9,9 +9,11 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
+	chimiddleware "github.com/go-chi/chi/middleware"
+
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/service"
+	"github.com/nickzhog/devops-tool/internal/server/web/middleware"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
@@ -22,22 +24,24 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.S
 
 	r := chi.NewRouter()
 
-	r.Use(middleware.RealIP)
-	// r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	// r.Use(chimiddleware.Logger)
+	if cfg.Settings.TrustedSubnet != "" {
+		r.Use(chimiddleware.RealIP)
+		r.Use(middleware.CheckIP(cfg.Settings.TrustedSubnet, logger))
+	}
 
-	r.Use(gzipCompress)
-	r.Use(gzipDecompress)
+	r.Use(middleware.GzipCompress)
+	r.Use(middleware.GzipDecompress)
 
 	if cfg.Settings.CryptoKey != "" {
 		key, err := encryption.NewPrivateKey(cfg.Settings.CryptoKey)
 		if err != nil {
 			logger.Fatal(err)
 		}
-		r.Use(requestDecryptMiddleWare(key, logger))
+		r.Use(middleware.RequestDecryptMiddleWare(key, logger))
 	}
 
-	r.Mount("/debug", middleware.Profiler())
+	r.Mount("/debug", chimiddleware.Profiler())
 
 	r.Get("/ping", handlerData.PingHandler)
 

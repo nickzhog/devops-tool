@@ -25,6 +25,8 @@ type Config struct {
 		Restore       bool          `env:"RESTORE"`
 		StoreInterval time.Duration `env:"STORE_INTERVAL"`
 
+		TrustedSubnet string `env:"TRUSTED_SUBNET"`
+
 		Key string `env:"ENCRYPTION_KEY"` // ключ для вычисления хэша метрики
 
 		CryptoKey string `env:"CRYPTO_KEY"` // путь до файла с приватным ключем (ассиметричное шифрование)
@@ -32,7 +34,7 @@ type Config struct {
 }
 
 func GetConfig() *Config {
-	cfg := &Config{}
+	cfg := new(Config)
 	flag.StringVar(&cfg.Settings.Address, "a", ":8080", "address for server listen")
 
 	flag.StringVar(&cfg.Settings.PostgresStorage.DatabaseDSN, "d", "", "database dsn")
@@ -44,6 +46,8 @@ func GetConfig() *Config {
 	flag.StringVar(&cfg.Settings.StoreFile, "f", "/tmp/devops-metrics-db.json", "file path for save and load metrics")
 	flag.BoolVar(&cfg.Settings.Restore, "r", true, "restore latest values")
 	flag.DurationVar(&cfg.Settings.StoreInterval, "i", time.Second, "interval for file update")
+
+	flag.StringVar(&cfg.Settings.TrustedSubnet, "t", "", "trusted subnet")
 
 	flag.StringVar(&cfg.Settings.Key, "k", "", "key for calculate hash of metric")
 
