@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -27,7 +28,12 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.S
 	// r.Use(chimiddleware.Logger)
 	if cfg.Settings.TrustedSubnet != "" {
 		r.Use(chimiddleware.RealIP)
-		r.Use(middleware.CheckIP(cfg.Settings.TrustedSubnet, logger))
+
+		_, ipNet, err := net.ParseCIDR(cfg.Settings.TrustedSubnet)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		r.Use(middleware.CheckIP(ipNet, logger))
 	}
 
 	r.Use(middleware.GzipCompress)

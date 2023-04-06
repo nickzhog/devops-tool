@@ -7,7 +7,7 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func CheckIP(trustedSubnet string, logger *logging.Logger) func(next http.Handler) http.Handler {
+func CheckIP(trustedSubnet *net.IPNet, logger *logging.Logger) func(next http.Handler) http.Handler {
 	fn := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -23,11 +23,7 @@ func CheckIP(trustedSubnet string, logger *logging.Logger) func(next http.Handle
 	return fn
 }
 
-func isIPInSubnet(ip, subnet string) bool {
-	_, ipNet, err := net.ParseCIDR(subnet)
-	if err != nil {
-		return false
-	}
+func isIPInSubnet(ip string, subnet *net.IPNet) bool {
 	checkIP := net.ParseIP(ip)
-	return ipNet.Contains(checkIP)
+	return subnet.Contains(checkIP)
 }
