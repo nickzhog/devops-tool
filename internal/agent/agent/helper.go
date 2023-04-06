@@ -42,7 +42,8 @@ func (a *agent) sendRequest(ctx context.Context, url string, postData []byte) ([
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Add("X-Real-IP", addrs[0].String())
+	ip := strings.Split(addrs[0].String(), "/")
+	request.Header.Add("X-Real-IP", ip[0])
 
 	res, err := http.DefaultClient.Do(request)
 	if err != nil {
