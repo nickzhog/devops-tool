@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/grpc"
 	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/internal/server/service/cache"
 	"github.com/nickzhog/devops-tool/internal/server/service/db"
@@ -37,7 +38,6 @@ func main() {
 	}()
 
 	var storage service.Storage
-
 	switch {
 
 	case cfg.Settings.PostgresStorage.DatabaseDSN != "":
@@ -66,12 +66,17 @@ func main() {
 	}
 
 	wg := new(sync.WaitGroup)
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		srv := web.PrepareServer(logger, cfg, storage)
 		if err := web.Serve(ctx, logger, srv); err != nil {
 			logger.Errorf("failed to serve: %s", err.Error())
 		}
+		wg.Done()
+	}()
+
+	go func() {
+		grpc.Serve(ctx, logger, cfg, storage)
 		wg.Done()
 	}()
 
@@ -82,5 +87,6 @@ func main() {
 			wg.Done()
 		}()
 	}
+
 	wg.Wait()
 }
