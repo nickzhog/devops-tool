@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"sync"
 
+	pb "github.com/nickzhog/devops-tool/internal/proto"
+
 	"github.com/nickzhog/devops-tool/internal/agent/config"
+	grpcclient "github.com/nickzhog/devops-tool/internal/agent/grpc_client"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/nickzhog/devops-tool/pkg/metric"
@@ -17,7 +20,7 @@ var _ Agent = (*agent)(nil)
 
 type Agent interface {
 	UpdateMetrics()
-	SendMetrics(ctx context.Context)
+	SendMetricsHTTP(ctx context.Context)
 	ExportToJSON() []byte
 	ImportFromJSON(data []byte) error
 }
@@ -27,6 +30,8 @@ type agent struct {
 	logger *logging.Logger
 
 	publicKey *rsa.PublicKey
+
+	grpcClient pb.MetricsClient
 
 	gaugeMetrics   map[string]float64
 	counterMetrics map[string]int64
@@ -50,6 +55,11 @@ func NewAgent(cfg *config.Config, logger *logging.Logger) *agent {
 
 		agent.publicKey = pubKey
 	}
+
+	if cfg.Settings.PortGRPC != "" {
+		agent.grpcClient = grpcclient.NewClient(cfg.Settings.PortGRPC)
+	}
+
 	return agent
 }
 
@@ -62,7 +72,7 @@ func (a *agent) UpdateMetrics() {
 	a.counterMetrics["PollCount"]++
 }
 
-func (a *agent) SendMetrics(ctx context.Context) {
+func (a *agent) SendMetricsHTTP(ctx context.Context) {
 	var url string
 	var answer []byte
 	var err error
@@ -113,6 +123,43 @@ func (a *agent) SendMetrics(ctx context.Context) {
 			a.logger.Error(err)
 		}
 	}
+}
+
+func (a *agent) SendMetricsGRPC(ctx context.Context) error {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+
+	var request pb.SetMetricRequest
+	for k, v := range a.gaugeMetrics {
+		metric := metric.NewGaugeMetric(k, v)
+		metric.Hash = metric.GetHash(a.cfg.Settings.Key)
+
+		request.Metrics = append(request.Metrics, &pb.Metric{
+			Id:    metric.ID,
+			Mtype: pb.Metric_gauge,
+			Value: *metric.Value,
+			Hash:  metric.Hash,
+		})
+	}
+	for k, v := range a.counterMetrics {
+		metric := metric.NewCounterMetric(k, v)
+		metric.Hash = metric.GetHash(a.cfg.Settings.Key)
+
+		request.Metrics = append(request.Metrics, &pb.Metric{
+			Id:    metric.ID,
+			Mtype: pb.Metric_counter,
+			Delta: *metric.Delta,
+			Hash:  metric.Hash,
+		})
+	}
+	response, err := a.grpcClient.SetMetric(ctx, &request)
+	if err != nil {
+		a.logger.Error(err)
+		return err
+	}
+	a.logger.Tracef("grpc response: %s", response.Answer)
+
+	return nil
 }
 
 func (a *agent) ImportFromJSON(data []byte) error {

@@ -57,7 +57,11 @@ func main() {
 				logger.Trace("send metrics is stopped")
 				return
 			case <-t.C:
-				a.SendMetrics(ctx)
+				a.SendMetricsHTTP(ctx)
+
+				if cfg.Settings.PortGRPC != "" {
+					a.SendMetricsGRPC(ctx)
+				}
 			}
 		}
 	}()
