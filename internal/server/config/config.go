@@ -9,8 +9,8 @@ import (
 
 type Config struct {
 	Settings struct {
-		Address  string `env:"ADDRESS"`
-		PortGRPC string `env:"GRPC_PORT" json:"grpc_port,omitempty"`
+		Address     string `env:"ADDRESS"`
+		AddressGRPC string `env:"ADDRESS_GRPC" json:"ADDRESS_GRPC,omitempty"`
 
 		PostgresStorage struct {
 			DatabaseDSN string `env:"DATABASE_DSN"`
@@ -36,7 +36,7 @@ type Config struct {
 
 func GetConfig() *Config {
 	cfg := new(Config)
-	flag.StringVar(&cfg.Settings.PortGRPC, "p", ":3200", "grpc port")
+	flag.StringVar(&cfg.Settings.AddressGRPC, "g", ":3200", "grpc port")
 	flag.StringVar(&cfg.Settings.Address, "a", ":8080", "address for server listen")
 
 	flag.StringVar(&cfg.Settings.PostgresStorage.DatabaseDSN, "d", "", "database dsn")

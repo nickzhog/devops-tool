@@ -15,7 +15,7 @@ func Serve(ctx context.Context, logger *logging.Logger, cfg *config.Config, stor
 	srv := grpc.NewServer()
 	pb.RegisterMetricsServer(srv, NewMetricServer(logger, cfg, storage))
 	go func() {
-		listen, err := net.Listen("tcp", cfg.Settings.PortGRPC)
+		listen, err := net.Listen("tcp", cfg.Settings.AddressGRPC)
 		if err != nil {
 			logger.Fatal(err)
 		}

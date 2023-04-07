@@ -56,8 +56,8 @@ func NewAgent(cfg *config.Config, logger *logging.Logger) *agent {
 		agent.publicKey = pubKey
 	}
 
-	if cfg.Settings.PortGRPC != "" {
-		agent.grpcClient = grpcclient.NewClient(cfg.Settings.PortGRPC)
+	if cfg.Settings.AddressGRPC != "" {
+		agent.grpcClient = grpcclient.NewClient(cfg.Settings.AddressGRPC)
 	}
 
 	return agent

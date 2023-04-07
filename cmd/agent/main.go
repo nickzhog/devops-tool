@@ -59,7 +59,7 @@ func main() {
 			case <-t.C:
 				a.SendMetricsHTTP(ctx)
 
-				if cfg.Settings.PortGRPC != "" {
+				if cfg.Settings.AddressGRPC != "" {
 					a.SendMetricsGRPC(ctx)
 				}
 			}
