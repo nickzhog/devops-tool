@@ -69,5 +69,5 @@ func (m *Metric) GetHash(key string) string {
 // IsValidHash проверяет, совпадает ли HMAC-хэш,
 // вычисленный с использованием переданного ключа, с HMAC-хэшем, сохраненным в метрике.
 func (m *Metric) IsValidHash(key string) bool {
-	return m.GetHash(key) == m.Hash
+	return hmac.Equal([]byte(m.GetHash(key)), []byte(m.Hash))
 }
