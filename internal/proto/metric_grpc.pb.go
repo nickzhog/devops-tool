@@ -19,16 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Metrics_SetMetric_FullMethodName = "/proto.Metrics/SetMetric"
-	Metrics_GetMetric_FullMethodName = "/proto.Metrics/GetMetric"
+	Metrics_SetMetrics_FullMethodName = "/proto.Metrics/SetMetrics"
+	Metrics_GetMetrics_FullMethodName = "/proto.Metrics/GetMetrics"
 )
 
 // MetricsClient is the client API for Metrics service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MetricsClient interface {
-	SetMetric(ctx context.Context, in *SetMetricRequest, opts ...grpc.CallOption) (*SetMetricResponse, error)
-	GetMetric(ctx context.Context, in *GetMetricRequest, opts ...grpc.CallOption) (*GetMetricResponse, error)
+	SetMetrics(ctx context.Context, in *SetMetricsRequest, opts ...grpc.CallOption) (*SetMetricsResponse, error)
+	GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error)
 }
 
 type metricsClient struct {
@@ -39,18 +39,18 @@ func NewMetricsClient(cc grpc.ClientConnInterface) MetricsClient {
 	return &metricsClient{cc}
 }
 
-func (c *metricsClient) SetMetric(ctx context.Context, in *SetMetricRequest, opts ...grpc.CallOption) (*SetMetricResponse, error) {
-	out := new(SetMetricResponse)
-	err := c.cc.Invoke(ctx, Metrics_SetMetric_FullMethodName, in, out, opts...)
+func (c *metricsClient) SetMetrics(ctx context.Context, in *SetMetricsRequest, opts ...grpc.CallOption) (*SetMetricsResponse, error) {
+	out := new(SetMetricsResponse)
+	err := c.cc.Invoke(ctx, Metrics_SetMetrics_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *metricsClient) GetMetric(ctx context.Context, in *GetMetricRequest, opts ...grpc.CallOption) (*GetMetricResponse, error) {
-	out := new(GetMetricResponse)
-	err := c.cc.Invoke(ctx, Metrics_GetMetric_FullMethodName, in, out, opts...)
+func (c *metricsClient) GetMetrics(ctx context.Context, in *GetMetricsRequest, opts ...grpc.CallOption) (*GetMetricsResponse, error) {
+	out := new(GetMetricsResponse)
+	err := c.cc.Invoke(ctx, Metrics_GetMetrics_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (c *metricsClient) GetMetric(ctx context.Context, in *GetMetricRequest, opt
 // All implementations must embed UnimplementedMetricsServer
 // for forward compatibility
 type MetricsServer interface {
-	SetMetric(context.Context, *SetMetricRequest) (*SetMetricResponse, error)
-	GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error)
+	SetMetrics(context.Context, *SetMetricsRequest) (*SetMetricsResponse, error)
+	GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error)
 	mustEmbedUnimplementedMetricsServer()
 }
 
@@ -70,11 +70,11 @@ type MetricsServer interface {
 type UnimplementedMetricsServer struct {
 }
 
-func (UnimplementedMetricsServer) SetMetric(context.Context, *SetMetricRequest) (*SetMetricResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetMetric not implemented")
+func (UnimplementedMetricsServer) SetMetrics(context.Context, *SetMetricsRequest) (*SetMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetMetrics not implemented")
 }
-func (UnimplementedMetricsServer) GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetMetric not implemented")
+func (UnimplementedMetricsServer) GetMetrics(context.Context, *GetMetricsRequest) (*GetMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMetrics not implemented")
 }
 func (UnimplementedMetricsServer) mustEmbedUnimplementedMetricsServer() {}
 
@@ -89,38 +89,38 @@ func RegisterMetricsServer(s grpc.ServiceRegistrar, srv MetricsServer) {
 	s.RegisterService(&Metrics_ServiceDesc, srv)
 }
 
-func _Metrics_SetMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetMetricRequest)
+func _Metrics_SetMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMetricsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MetricsServer).SetMetric(ctx, in)
+		return srv.(MetricsServer).SetMetrics(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Metrics_SetMetric_FullMethodName,
+		FullMethod: Metrics_SetMetrics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetricsServer).SetMetric(ctx, req.(*SetMetricRequest))
+		return srv.(MetricsServer).SetMetrics(ctx, req.(*SetMetricsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Metrics_GetMetric_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetMetricRequest)
+func _Metrics_GetMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMetricsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MetricsServer).GetMetric(ctx, in)
+		return srv.(MetricsServer).GetMetrics(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Metrics_GetMetric_FullMethodName,
+		FullMethod: Metrics_GetMetrics_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MetricsServer).GetMetric(ctx, req.(*GetMetricRequest))
+		return srv.(MetricsServer).GetMetrics(ctx, req.(*GetMetricsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -133,12 +133,12 @@ var Metrics_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MetricsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SetMetric",
-			Handler:    _Metrics_SetMetric_Handler,
+			MethodName: "SetMetrics",
+			Handler:    _Metrics_SetMetrics_Handler,
 		},
 		{
-			MethodName: "GetMetric",
-			Handler:    _Metrics_GetMetric_Handler,
+			MethodName: "GetMetrics",
+			Handler:    _Metrics_GetMetrics_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

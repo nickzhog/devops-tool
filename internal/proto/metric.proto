@@ -4,35 +4,41 @@ package proto;
 
 option go_package = "github.com/nickzhog/devops-tool/internal/proto";
 
+enum MType {
+    gauge = 0;
+    counter = 1;
+}
+
 message Metric {
     string id = 1;
-    enum MType {
-        gauge = 0;
-        counter = 1;
-    }
     MType mtype = 2;
     double value = 3;
     int64 delta = 4;
     string hash  = 5; 
 }
 
-message SetMetricRequest {
+message GetMetric {
+    string id = 1;
+    MType mtype = 2;
+}
+
+message SetMetricsRequest {
     repeated Metric metrics = 1;
 }
 
-message SetMetricResponse {
-    string answer = 1;
+message SetMetricsResponse {
+    bool ok = 1;
 }
 
-message GetMetricRequest {
-    Metric metric = 1;
+message GetMetricsRequest {
+    repeated GetMetric request = 1;
 }
 
-message GetMetricResponse {
-    Metric metric = 1;
+message GetMetricsResponse {
+    repeated Metric metric = 1;
 }
 
 service Metrics {
-  rpc SetMetric (SetMetricRequest) returns (SetMetricResponse);
-  rpc GetMetric (GetMetricRequest) returns (GetMetricResponse);
+  rpc SetMetrics (SetMetricsRequest) returns (SetMetricsResponse){}
+  rpc GetMetrics (GetMetricsRequest) returns (GetMetricsResponse){}
 }
