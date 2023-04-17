@@ -21,8 +21,8 @@ var _ Agent = (*agent)(nil)
 type Agent interface {
 	UpdateMetrics()
 	SendMetricsHTTP(ctx context.Context)
-	ExportToJSON() []byte
-	ImportFromJSON(data []byte) error
+	ImportMetrics([]metric.Metric) error
+	ExportMetrics() []metric.Metric
 }
 
 type agent struct {
@@ -77,7 +77,12 @@ func (a *agent) SendMetricsHTTP(ctx context.Context) {
 	var answer []byte
 	var err error
 
-	jsonData := a.ExportToJSON()
+	metrics := a.ExportMetrics()
+
+	jsonMetrics, err := json.Marshal(metrics)
+	if err != nil {
+		a.logger.Error(err)
+	}
 
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
@@ -90,10 +95,10 @@ func (a *agent) SendMetricsHTTP(ctx context.Context) {
 		////
 
 		url = fmt.Sprintf("%s/update", a.cfg.Settings.Address)
+
 		metric := metric.NewGaugeMetric(k, v)
-		if a.cfg.Settings.Key != "" {
-			metric.Hash = string(metric.GetHash(a.cfg.Settings.Key))
-		}
+		metric.Hash = metric.GetHash(a.cfg.Settings.Key)
+
 		body, _ := json.Marshal(metric)
 		answer, err = a.sendRequest(ctx, url, body)
 	}
@@ -106,22 +111,20 @@ func (a *agent) SendMetricsHTTP(ctx context.Context) {
 		////
 
 		url = fmt.Sprintf("%s/update", a.cfg.Settings.Address)
+
 		metric := metric.NewCounterMetric(k, v)
-		if a.cfg.Settings.Key != "" {
-			metric.Hash = string(metric.GetHash(a.cfg.Settings.Key))
-		}
+		metric.Hash = metric.GetHash(a.cfg.Settings.Key)
+
 		body, _ := json.Marshal(metric)
 		answer, err = a.sendRequest(ctx, url, body)
 	}
 
 	a.logger.Tracef("metrics sended to: %s, last err: %v, last answer: %s", a.cfg.Settings.Address, err, answer)
 
-	if len(jsonData) > 0 {
-		url := fmt.Sprintf("%s/updates/", a.cfg.Settings.Address)
-		_, err = a.sendRequest(ctx, url, jsonData)
-		if err != nil {
-			a.logger.Error(err)
-		}
+	url = fmt.Sprintf("%s/updates/", a.cfg.Settings.Address)
+	_, err = a.sendRequest(ctx, url, jsonMetrics)
+	if err != nil {
+		a.logger.Error(err)
 	}
 }
 
@@ -129,14 +132,14 @@ func (a *agent) SendMetricsGRPC(ctx context.Context) error {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
-	var request pb.SetMetricRequest
+	var request pb.SetMetricsRequest
 	for k, v := range a.gaugeMetrics {
 		metric := metric.NewGaugeMetric(k, v)
 		metric.Hash = metric.GetHash(a.cfg.Settings.Key)
 
 		request.Metrics = append(request.Metrics, &pb.Metric{
 			Id:    metric.ID,
-			Mtype: pb.Metric_gauge,
+			Mtype: pb.MType_gauge,
 			Value: *metric.Value,
 			Hash:  metric.Hash,
 		})
@@ -147,58 +150,59 @@ func (a *agent) SendMetricsGRPC(ctx context.Context) error {
 
 		request.Metrics = append(request.Metrics, &pb.Metric{
 			Id:    metric.ID,
-			Mtype: pb.Metric_counter,
+			Mtype: pb.MType_counter,
 			Delta: *metric.Delta,
 			Hash:  metric.Hash,
 		})
 	}
-	response, err := a.grpcClient.SetMetric(ctx, &request)
+	_, err := a.grpcClient.SetMetrics(ctx, &request)
 	if err != nil {
 		a.logger.Error(err)
 		return err
 	}
-	a.logger.Tracef("grpc response: %s", response.Answer)
 
 	return nil
 }
 
-func (a *agent) ImportFromJSON(data []byte) error {
-	var metrics []metric.Metric
-	err := json.Unmarshal(data, &metrics)
-	if err != nil {
-		return err
-	}
-
+func (a *agent) ImportMetrics(metrics []metric.Metric) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
-	for _, v := range metrics {
-		switch v.MType {
+
+	for _, m := range metrics {
+		switch m.MType {
 		case metric.CounterType:
-			a.counterMetrics[v.ID] = *v.Delta
+			a.counterMetrics[m.ID] = *m.Delta
 		case metric.GaugeType:
-			a.gaugeMetrics[v.ID] = *v.Value
+			a.gaugeMetrics[m.ID] = *m.Value
 		default:
-			return fmt.Errorf("wring metric type: %s", v.MType)
+			return fmt.Errorf("wrong metric type: %s", m.MType)
 		}
 	}
 
 	return nil
 }
 
-func (a *agent) ExportToJSON() []byte {
+func (a *agent) ExportMetrics() []metric.Metric {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
-	metrics := make([]metric.Metric, 0)
+	metrics := make([]metric.Metric, 0, len(a.counterMetrics)+len(a.gaugeMetrics))
 	for k, v := range a.gaugeMetrics {
-		metrics = append(metrics, metric.NewGaugeMetric(k, v))
+		m := metric.NewGaugeMetric(k, v)
+		if a.cfg.Settings.Key != "" {
+			m.Hash = m.GetHash(a.cfg.Settings.Key)
+		}
+
+		metrics = append(metrics, m)
 	}
 	for k, v := range a.counterMetrics {
-		metrics = append(metrics, metric.NewCounterMetric(k, v))
+		m := metric.NewCounterMetric(k, v)
+		if a.cfg.Settings.Key != "" {
+			m.Hash = m.GetHash(a.cfg.Settings.Key)
+		}
+
+		metrics = append(metrics, m)
 	}
-	ans, err := json.Marshal(metrics)
-	if err != nil {
-		return nil
-	}
-	return ans
+
+	return metrics
 }
