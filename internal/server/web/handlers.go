@@ -2,7 +2,6 @@ package web
 
 import (
 	"context"
-	"crypto/hmac"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,9 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
-	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/service"
-	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/server"
 	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
@@ -32,16 +29,12 @@ func (h *handler) showError(w http.ResponseWriter, err string, status int) {
 }
 
 type handler struct {
-	Storage service.Storage
-	Logger  *logging.Logger
-	Cfg     *config.Config
+	srv server.Server
 }
 
-func NewHandlerData(logger *logging.Logger, cfg *config.Config, storage service.Storage) *handler {
+func NewHandler(srv server.Server) *handler {
 	return &handler{
-		Logger:  logger,
-		Storage: storage,
-		Cfg:     cfg,
+		srv: srv,
 	}
 }
 
@@ -76,7 +69,7 @@ var templ = template.Must(template.New("index").Parse(
 func (h *handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*2)
 	defer cancel()
-	err := h.Storage.Ping(ctx)
+	err := h.srv.Ping(ctx)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -85,16 +78,10 @@ func (h *handler) PingHandler(w http.ResponseWriter, r *http.Request) {
 
 // IndexHandler - главная страница, отображает все доступные метрики и их значения
 func (h *handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := h.Storage.ExportToJSON(r.Context())
-	if err != nil {
-		h.showError(w, err.Error(), http.StatusInternalServerError)
-	}
 
-	var metrics []metric.Metric
-	err = json.Unmarshal(data, &metrics)
+	metrics, err := h.srv.FindAll(r.Context())
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	gaugeData := make([]ForTemplate, 0)
@@ -145,17 +132,13 @@ func (h *handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, err = h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
+	metricElem, err = h.srv.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
 	if err != nil {
 		if err == metric.ErrNoResult {
 			h.showError(w, "not found", http.StatusNotFound)
 			return
 		}
 		h.showError(w, "not found", http.StatusInternalServerError)
-	}
-
-	if h.Cfg.Settings.Key != "" {
-		metricElem.Hash = string(metricElem.GetHash(h.Cfg.Settings.Key))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -185,31 +168,18 @@ func (h *handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.Cfg.Settings.Key != "" {
-		if !hmac.Equal(
-			[]byte(metricElem.GetHash(h.Cfg.Settings.Key)),
-			[]byte(metricElem.Hash)) {
-			h.showError(w, "wrong hash", http.StatusBadRequest)
-			return
-		}
-	}
+	h.srv.Logger.Tracef("UpdateFromBody: %s", body)
 
-	h.Logger.Tracef("UpdateFromBody: %s", body)
-
-	err = h.Storage.UpsertMetric(r.Context(), metricElem)
+	err = h.srv.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	mcurrent, err := h.Storage.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
+	mcurrent, err := h.srv.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	if h.Cfg.Settings.Key != "" {
-		mcurrent.Hash = string(mcurrent.GetHash(h.Cfg.Settings.Key))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -238,7 +208,7 @@ func (h *handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricElem, err := h.Storage.FindMetric(r.Context(), metricName, metricType)
+	metricElem, err := h.srv.FindMetric(r.Context(), metricName, metricType)
 	if err != nil {
 		if err == metric.ErrNoResult {
 			h.showError(w, "not found", http.StatusNotFound)
@@ -302,7 +272,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 		metricElem = metric.NewCounterMetric(metricName, value)
 		valueString = fmt.Sprintf("%v", value)
 
-		actualMetric, err := h.Storage.FindMetric(r.Context(), metricName, metricType)
+		actualMetric, err := h.srv.FindMetric(r.Context(), metricName, metricType)
 		if err != nil && !errors.Is(err, metric.ErrNoResult) {
 			h.showError(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -314,7 +284,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.Storage.UpsertMetric(r.Context(), metricElem)
+	err := h.srv.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -347,22 +317,14 @@ func (h *handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.Cfg.Settings.Key != "" {
-		var metrics []metric.Metric
-		err = json.Unmarshal(body, &metrics)
-		if err != nil {
-			h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
-			return
-		}
-		for _, v := range metrics {
-			if !v.IsValidHash(h.Cfg.Settings.Key) {
-				h.showError(w, fmt.Sprintf("wrong hash for %+v", v), http.StatusBadRequest)
-				return
-			}
-		}
+	var metrics []metric.Metric
+	err = json.Unmarshal(body, &metrics)
+	if err != nil {
+		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+		return
 	}
 
-	err = h.Storage.ImportFromJSON(r.Context(), body)
+	err = h.srv.UpsertMany(r.Context(), metrics)
 	if err != nil {
 		h.showError(w, err.Error(), http.StatusBadRequest)
 		return

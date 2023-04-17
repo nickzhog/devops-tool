@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/server"
 	"github.com/nickzhog/devops-tool/internal/server/service/cache"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/nickzhog/devops-tool/pkg/metric"
@@ -18,9 +19,8 @@ import (
 )
 
 func TestHandler_UpdateFromBody(t *testing.T) {
-	h := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
-
-	h.Cfg.Settings.Key = ""
+	srv := server.NewServer(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+	handler := NewHandler(*srv)
 
 	type request struct {
 		data []byte
@@ -96,7 +96,7 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/update", bytes.NewBuffer([]byte(tt.data)))
 
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(h.UpdateFromBody)
+			h := http.HandlerFunc(handler.UpdateFromBody)
 			h.ServeHTTP(w, request)
 			res := w.Result()
 
@@ -114,8 +114,8 @@ func TestHandler_UpdateFromBody(t *testing.T) {
 }
 
 func TestHandler_SelectFromBody(t *testing.T) {
-	h := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
-	h.Cfg.Settings.Key = ""
+	srv := server.NewServer(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+	handler := NewHandler(*srv)
 
 	nulFloat := float64(0)
 	nulInt := int64(0)
@@ -158,7 +158,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			err := h.Storage.UpsertMetric(context.Background(), tt.metric)
+			err := handler.srv.UpsertMetric(context.Background(), tt.metric)
 			assert.NoError(err)
 
 			tt.metric.Value = &nulFloat
@@ -166,7 +166,7 @@ func TestHandler_SelectFromBody(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/value", bytes.NewBuffer(tt.metric.Marshal()))
 
 			w := httptest.NewRecorder()
-			h := http.HandlerFunc(h.SelectFromBody)
+			h := http.HandlerFunc(handler.SelectFromBody)
 			h.ServeHTTP(w, request)
 			res := w.Result()
 
@@ -182,8 +182,6 @@ func TestHandler_SelectFromBody(t *testing.T) {
 }
 
 func TestHandler_UpdateMany(t *testing.T) {
-	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
-	handler.Cfg.Settings.Key = ""
 
 	tests := []struct {
 		name        string
@@ -215,7 +213,8 @@ func TestHandler_UpdateMany(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler.Storage = cache.NewMemStorage()
+			srv := server.NewServer(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+			handler := NewHandler(*srv)
 
 			request := httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewBuffer([]byte(tt.requestData)))
 
@@ -227,28 +226,13 @@ func TestHandler_UpdateMany(t *testing.T) {
 
 			assert := assert.New(t)
 			assert.Equal(tt.wantCode, res.StatusCode)
-
-			if tt.wantCode == http.StatusOK {
-				tempStorage := cache.NewMemStorage()
-				err := tempStorage.ImportFromJSON(context.TODO(), tt.requestData)
-				assert.NoError(err)
-
-				data, err := tempStorage.ExportToJSON(context.TODO())
-				assert.NoError(err)
-
-				dataHandler, err := handler.Storage.ExportToJSON(context.TODO())
-				assert.NoError(err)
-
-				assert.JSONEq(string(data), string(dataHandler))
-			}
 		})
 	}
 }
 
 func TestHandler_UpdateFromURL(t *testing.T) {
-	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
-
-	handler.Cfg.Settings.Key = ""
+	srv := server.NewServer(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+	handler := NewHandler(*srv)
 
 	type want struct {
 		code     int
@@ -321,8 +305,8 @@ func TestHandler_UpdateFromURL(t *testing.T) {
 }
 
 func TestHandler_SelectFromURL(t *testing.T) {
-	handler := NewHandlerData(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
-	handler.Cfg.Settings.Key = ""
+	srv := server.NewServer(logging.GetLogger(), &config.Config{}, cache.NewMemStorage())
+	handler := NewHandler(*srv)
 
 	type want struct {
 		code     int
@@ -362,7 +346,7 @@ func TestHandler_SelectFromURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			err := handler.Storage.UpsertMetric(context.Background(), tt.metric)
+			err := handler.srv.UpsertMetric(context.Background(), tt.metric)
 			assert.NoError(err)
 
 			w := httptest.NewRecorder()

@@ -13,6 +13,8 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
+var _ StorageFile = (*storageFile)(nil)
+
 type StorageFile interface {
 	StartUpdate(ctx context.Context)
 }
@@ -71,11 +73,18 @@ func (s *storageFile) updateFile(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	data, err := s.storage.ExportToJSON(ctx)
+
+	metrics, err := s.storage.ExportMetrics(ctx)
 	if err != nil {
 		return
 	}
-	_, err = s.file.Write(data)
+
+	jsonData, err := json.Marshal(metrics)
+	if err != nil {
+		return
+	}
+
+	_, err = s.file.Write(jsonData)
 
 	// s.logger.Traceln("storage file updated")
 

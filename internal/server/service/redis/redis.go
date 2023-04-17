@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/redis/go-redis/v9"
 )
+
+var _ service.Storage = (*repository)(nil)
 
 type repository struct {
 	client *redis.Client
@@ -59,21 +62,9 @@ func (r *repository) UpsertMetric(ctx context.Context, m metric.Metric) error {
 	return r.client.Set(ctx, prepareKey(m.ID, m.MType), m.Marshal(), 0).Err()
 }
 
-func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
-	var metrics []metric.Metric
-	err := json.Unmarshal(data, &metrics)
-	if err != nil {
-		return err
-	}
-
+func (r *repository) ImportMetrics(ctx context.Context, metrics []metric.Metric) error {
 	for _, m := range metrics {
-		if r.cfg.Settings.Key != "" {
-			if !m.IsValidHash(r.cfg.Settings.Key) {
-				return metric.ErrWrongHash
-			}
-		}
-
-		err = r.UpsertMetric(ctx, m)
+		err := r.UpsertMetric(ctx, m)
 		if err != nil {
 			return err
 		}
@@ -82,7 +73,7 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 	return nil
 }
 
-func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
+func (r *repository) ExportMetrics(ctx context.Context) ([]metric.Metric, error) {
 	keys, err := r.client.Keys(ctx, "metric:*").Result()
 	if err != nil {
 		return nil, err
@@ -103,10 +94,5 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 		metrics = append(metrics, m)
 	}
 
-	data, err := json.Marshal(metrics)
-	if err != nil {
-		return nil, err
-	}
-
-	return data, nil
+	return metrics, nil
 }

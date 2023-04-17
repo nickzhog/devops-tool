@@ -5,34 +5,30 @@ import (
 	"errors"
 
 	pb "github.com/nickzhog/devops-tool/internal/proto"
-	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/service"
-	"github.com/nickzhog/devops-tool/pkg/logging"
+	"github.com/nickzhog/devops-tool/internal/server/server"
 	"github.com/nickzhog/devops-tool/pkg/metric"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+var _ pb.MetricsServer = (*MetricServer)(nil)
+
 type MetricServer struct {
-	storage service.Storage
-	logger  *logging.Logger
-	cfg     *config.Config
+	srv server.Server
 
 	pb.UnimplementedMetricsServer
 }
 
-func NewMetricServer(logger *logging.Logger, cfg *config.Config, storage service.Storage) *MetricServer {
+func NewMetricServer(srv server.Server) *MetricServer {
 	return &MetricServer{
-		logger:  logger,
-		storage: storage,
-		cfg:     cfg,
+		srv: srv,
 	}
 }
 
-func (s *MetricServer) SetMetric(ctx context.Context, req *pb.SetMetricRequest) (*pb.SetMetricResponse, error) {
-	var response pb.SetMetricResponse
+func (s *MetricServer) SetMetrics(ctx context.Context, in *pb.SetMetricsRequest) (*pb.SetMetricsResponse, error) {
+	metrics := make([]metric.Metric, 0, len(in.Metrics))
 
-	for _, pbmetric := range req.Metrics {
+	for _, pbmetric := range in.Metrics {
 		var m metric.Metric
 
 		switch pbmetric.Mtype.String() {
@@ -43,36 +39,38 @@ func (s *MetricServer) SetMetric(ctx context.Context, req *pb.SetMetricRequest) 
 			m = metric.NewCounterMetric(pbmetric.Id, pbmetric.Delta)
 		}
 
-		if s.cfg.Settings.Key != "" && pbmetric.Hash != m.GetHash(s.cfg.Settings.Key) {
-			return nil, status.Errorf(codes.DataLoss, metric.ErrWrongHash.Error())
-		}
+		m.Hash = pbmetric.Hash
 
-		err := s.storage.UpsertMetric(ctx, m)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, err.Error())
-		}
+		metrics = append(metrics, m)
 	}
 
-	response.Answer = "ok"
-	return &response, nil
-}
-
-func (s *MetricServer) GetMetric(ctx context.Context, req *pb.GetMetricRequest) (*pb.GetMetricResponse, error) {
-	var response pb.GetMetricResponse
-
-	m, err := s.storage.FindMetric(ctx, req.Metric.Id, req.Metric.Mtype.String())
+	err := s.srv.UpsertMany(ctx, metrics)
 	if err != nil {
-		if errors.Is(err, metric.ErrNoResult) {
-			return nil, status.Errorf(codes.NotFound, metric.ErrNoResult.Error())
-		}
 		return nil, status.Errorf(codes.Unknown, err.Error())
 	}
 
-	response.Metric = &pb.Metric{
-		Id:    m.ID,
-		Mtype: pb.Metric_MType(pb.Metric_MType_value[m.MType]),
-		Value: *m.Value,
-		Delta: *m.Delta,
+	return &pb.SetMetricsResponse{Ok: true}, nil
+}
+
+func (s *MetricServer) GetMetrics(ctx context.Context, in *pb.GetMetricsRequest) (*pb.GetMetricsResponse, error) {
+	var response pb.GetMetricsResponse
+
+	for _, pbMetric := range in.Request {
+		m, err := s.srv.FindMetric(ctx, pbMetric.Id, pbMetric.Mtype.String())
+		if err != nil {
+			if errors.Is(err, metric.ErrNoResult) {
+				return nil, status.Errorf(codes.NotFound, metric.ErrNoResult.Error())
+			}
+			return nil, status.Errorf(codes.Unknown, err.Error())
+		}
+
+		response.Metric = append(response.Metric,
+			&pb.Metric{
+				Id:    m.ID,
+				Mtype: pb.MType(pb.MType_value[m.MType]),
+				Value: *m.Value,
+				Delta: *m.Delta,
+			})
 	}
 
 	return &response, nil

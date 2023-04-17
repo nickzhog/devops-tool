@@ -3,15 +3,17 @@ package db
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/nickzhog/devops-tool/internal/server/config"
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/logging"
 	"github.com/nickzhog/devops-tool/pkg/metric"
 	"github.com/nickzhog/devops-tool/pkg/postgres"
 )
+
+var _ service.Storage = (*repository)(nil)
 
 type repository struct {
 	client postgres.Client
@@ -92,20 +94,7 @@ func (r *repository) UpsertMetric(ctx context.Context, metric metric.Metric) (er
 	return
 }
 
-func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
-	var metrics []metric.Metric
-	err := json.Unmarshal(data, &metrics)
-	if err != nil {
-		return err
-	}
-	if r.cfg.Settings.Key != "" {
-		for _, m := range metrics {
-			if !m.IsValidHash(r.cfg.Settings.Key) {
-				return metric.ErrWrongHash
-			}
-		}
-	}
-
+func (r *repository) ImportMetrics(ctx context.Context, metrics []metric.Metric) error {
 	tx, err := r.client.Begin(ctx)
 	if err != nil {
 		return err
@@ -136,7 +125,7 @@ func (r *repository) ImportFromJSON(ctx context.Context, data []byte) error {
 	return tx.Commit(ctx)
 }
 
-func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
+func (r *repository) ExportMetrics(ctx context.Context) ([]metric.Metric, error) {
 	q := `
 		SELECT
 		id, type, delta, value 
@@ -178,5 +167,5 @@ func (r *repository) ExportToJSON(ctx context.Context) ([]byte, error) {
 		metrics = append(metrics, m)
 	}
 
-	return json.Marshal(metrics)
+	return metrics, nil
 }

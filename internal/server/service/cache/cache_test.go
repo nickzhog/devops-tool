@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/nickzhog/devops-tool/pkg/metric"
@@ -54,8 +55,8 @@ func TestMemStorage_Upsert(t *testing.T) {
 	}
 }
 
-func BenchmarkExportToJSON(b *testing.B) {
-	metrics := []byte(`
+func BenchmarkExportMetrics(b *testing.B) {
+	metricsJSON := []byte(`
 	[
 		{"id":"good_gauge","type":"gauge","value":321},
 		{"id":"good_gauge2","type":"gauge","value":123},
@@ -76,13 +77,18 @@ func BenchmarkExportToJSON(b *testing.B) {
 	assert := assert.New(b)
 
 	storage := NewMemStorage()
-	err := storage.ImportFromJSON(context.Background(), metrics)
+
+	var metrics []metric.Metric
+	err := json.Unmarshal(metricsJSON, &metrics)
+	assert.NoError(err)
+
+	err = storage.ImportMetrics(context.Background(), metrics)
 	assert.NoError(err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.ReportAllocs()
-		_, err := storage.ExportToJSON(context.Background())
+		_, err := storage.ExportMetrics(context.Background())
 		assert.NoError(err)
 	}
 }

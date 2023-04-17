@@ -9,6 +9,7 @@ import (
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/grpc"
+	"github.com/nickzhog/devops-tool/internal/server/server"
 	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/internal/server/service/cache"
 	"github.com/nickzhog/devops-tool/internal/server/service/db"
@@ -40,24 +41,24 @@ func main() {
 	var storage service.Storage
 	switch {
 
-	case cfg.Settings.PostgresStorage.DatabaseDSN != "":
+	case cfg.PostgresStorage.DatabaseDSN != "":
 		logger.Trace("postgres storage")
-		err := migration.Migrate(cfg.Settings.PostgresStorage.DatabaseDSN)
+		err := migration.Migrate(cfg.PostgresStorage.DatabaseDSN)
 		if err != nil {
 			logger.Fatalf("migration error: %s", err.Error())
 		}
-		postgresClient, err := postgres.NewClient(ctx, 2, cfg.Settings.PostgresStorage.DatabaseDSN)
+		postgresClient, err := postgres.NewClient(ctx, 2, cfg.PostgresStorage.DatabaseDSN)
 		if err != nil {
 			logger.Fatalf("db error: %s", err.Error())
 		}
 		storage = db.NewRepository(postgresClient, logger, cfg)
 
-	case cfg.Settings.RedisStorage.Addr != "":
+	case cfg.RedisStorage.Addr != "":
 		logger.Trace("redis storage")
 		redisClient := redis_client.NewClient(ctx,
-			cfg.Settings.RedisStorage.Addr,
-			cfg.Settings.RedisStorage.Password,
-			cfg.Settings.RedisStorage.DB)
+			cfg.RedisStorage.Addr,
+			cfg.RedisStorage.Password,
+			cfg.RedisStorage.DB)
 		storage = redis.NewRepository(redisClient, logger, cfg)
 
 	default:
@@ -65,18 +66,17 @@ func main() {
 		storage = cache.NewMemStorage()
 	}
 
+	srv := server.NewServer(logger, cfg, storage)
+
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 	go func() {
-		srv := web.PrepareServer(logger, cfg, storage)
-		if err := web.Serve(ctx, logger, srv); err != nil {
-			logger.Errorf("failed to serve: %s", err.Error())
-		}
+		web.Serve(ctx, *srv, cfg)
 		wg.Done()
 	}()
 
 	go func() {
-		grpc.Serve(ctx, logger, cfg, storage)
+		grpc.Serve(ctx, *srv, cfg)
 		wg.Done()
 	}()
 

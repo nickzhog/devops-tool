@@ -13,15 +13,13 @@ import (
 	chimiddleware "github.com/go-chi/chi/middleware"
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
-	"github.com/nickzhog/devops-tool/internal/server/service"
+	"github.com/nickzhog/devops-tool/internal/server/server"
 	"github.com/nickzhog/devops-tool/internal/server/web/middleware"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
-	"github.com/nickzhog/devops-tool/pkg/logging"
 )
 
-func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.Storage) *http.Server {
-
-	handlerData := NewHandlerData(logger, cfg, storage)
+func Serve(ctx context.Context, srv server.Server, cfg *config.Config) {
+	handlerData := NewHandler(srv)
 
 	r := chi.NewRouter()
 
@@ -31,9 +29,9 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.S
 
 		_, ipNet, err := net.ParseCIDR(cfg.Settings.TrustedSubnet)
 		if err != nil {
-			logger.Fatal(err)
+			srv.Logger.Fatal(err)
 		}
-		r.Use(middleware.CheckIP(ipNet, logger))
+		r.Use(middleware.CheckIP(ipNet, srv.Logger))
 	}
 
 	r.Use(middleware.GzipCompress)
@@ -42,9 +40,9 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.S
 	if cfg.Settings.CryptoKey != "" {
 		key, err := encryption.NewPrivateKey(cfg.Settings.CryptoKey)
 		if err != nil {
-			logger.Fatal(err)
+			srv.Logger.Fatal(err)
 		}
-		r.Use(middleware.RequestDecryptMiddleWare(key, logger))
+		r.Use(middleware.RequestDecryptMiddleWare(key, srv.Logger))
 	}
 
 	r.Mount("/debug", chimiddleware.Profiler())
@@ -66,37 +64,29 @@ func PrepareServer(logger *logging.Logger, cfg *config.Config, storage service.S
 	// batch update
 	r.Post("/updates/", handlerData.UpdateMany)
 
-	return &http.Server{
+	httpSrv := &http.Server{
 		Addr:    cfg.Settings.Address,
 		Handler: r,
 	}
-}
 
-func Serve(ctx context.Context, logger *logging.Logger, srv *http.Server) (err error) {
 	go func() {
-		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen:%+s\n", err)
 		}
 	}()
 
-	logger.Tracef("server started")
+	srv.Logger.Tracef("server started")
 
 	<-ctx.Done()
 
-	logger.Tracef("server stopped")
+	srv.Logger.Tracef("server stopped")
 
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err = srv.Shutdown(ctxShutDown); err != nil {
-		logger.Fatalf("server Shutdown Failed:%+s", err)
+	if err := httpSrv.Shutdown(ctxShutDown); err != nil {
+		srv.Logger.Fatalf("server Shutdown Failed:%+s", err)
 	}
 
-	logger.Tracef("server exited properly")
-
-	if err == http.ErrServerClosed {
-		err = nil
-	}
-
-	return
+	srv.Logger.Tracef("server exited properly")
 }

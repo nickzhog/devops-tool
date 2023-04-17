@@ -2,12 +2,14 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"sync"
 
+	"github.com/nickzhog/devops-tool/internal/server/service"
 	"github.com/nickzhog/devops-tool/pkg/metric"
 )
+
+var _ service.Storage = (*memStorage)(nil)
 
 type memStorage struct {
 	mutex          *sync.RWMutex
@@ -77,7 +79,7 @@ func (m *memStorage) FindMetric(ctx context.Context, name, mtype string) (metric
 	return answer, nil
 }
 
-func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
+func (m *memStorage) ExportMetrics(ctx context.Context) ([]metric.Metric, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -91,25 +93,15 @@ func (m *memStorage) ExportToJSON(ctx context.Context) ([]byte, error) {
 	}
 
 	if len(metrics) < 1 {
-		return []byte(`[]`), nil
+		return nil, nil
 	}
 
-	encoded, err := json.Marshal(metrics)
-	if err != nil {
-		return nil, err
-	}
-	return encoded, nil
+	return metrics, nil
 }
 
-func (m *memStorage) ImportFromJSON(ctx context.Context, data []byte) error {
-	var metrics []metric.Metric
-	err := json.Unmarshal(data, &metrics)
-	if err != nil {
-		return err
-	}
-
+func (m *memStorage) ImportMetrics(ctx context.Context, metrics []metric.Metric) error {
 	for _, v := range metrics {
-		err = m.UpsertMetric(ctx, v)
+		err := m.UpsertMetric(ctx, v)
 		if err != nil {
 			return err
 		}
