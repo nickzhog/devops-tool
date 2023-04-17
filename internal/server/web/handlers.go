@@ -17,17 +17,6 @@ import (
 	"github.com/nickzhog/devops-tool/pkg/metric"
 )
 
-func (h *handler) showError(w http.ResponseWriter, err string, status int) {
-	// h.Logger.Error(err)
-	m := map[string]string{
-		"error": err,
-	}
-	data, _ := json.Marshal(m)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(data)
-}
-
 type handler struct {
 	srv server.Server
 }
@@ -81,7 +70,8 @@ func (h *handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 	metrics, err := h.srv.FindAll(r.Context())
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusInternalServerError)
+		ErrInternalError(err).Render(w, r)
+		return
 	}
 
 	gaugeData := make([]ForTemplate, 0)
@@ -122,23 +112,23 @@ func (h *handler) IndexHandler(w http.ResponseWriter, r *http.Request) {
 func (h *handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.showError(w, "cant get body", http.StatusBadRequest)
+		ErrBadRequest(err).Render(w, r)
 		return
 	}
 	var metricElem metric.Metric
 	err = json.Unmarshal(body, &metricElem)
 	if err != nil {
-		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+		ErrUnprocessableEntityRequest(err).Render(w, r)
 		return
 	}
 
 	metricElem, err = h.srv.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
 	if err != nil {
 		if err == metric.ErrNoResult {
-			h.showError(w, "not found", http.StatusNotFound)
+			ErrNotFound(err).Render(w, r)
 			return
 		}
-		h.showError(w, "not found", http.StatusInternalServerError)
+		ErrInternalError(err).Render(w, r)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -158,13 +148,13 @@ func (h *handler) SelectFromBody(w http.ResponseWriter, r *http.Request) {
 func (h *handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.showError(w, "cant get body", http.StatusBadRequest)
+		ErrBadRequest(err).Render(w, r)
 		return
 	}
 	var metricElem metric.Metric
 	err = json.Unmarshal(body, &metricElem)
 	if err != nil {
-		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+		ErrUnprocessableEntityRequest(err).Render(w, r)
 		return
 	}
 
@@ -172,13 +162,13 @@ func (h *handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 
 	err = h.srv.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusBadRequest)
+		ErrInternalError(err).Render(w, r)
 		return
 	}
 
 	mcurrent, err := h.srv.FindMetric(r.Context(), metricElem.ID, metricElem.MType)
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusInternalServerError)
+		ErrInternalError(err).Render(w, r)
 		return
 	}
 
@@ -194,27 +184,24 @@ func (h *handler) UpdateFromBody(w http.ResponseWriter, r *http.Request) {
 func (h *handler) SelectFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	if metricType != metric.CounterType && metricType != metric.GaugeType {
-		h.showError(w,
-			"metric_type is missing in parameters",
-			http.StatusBadRequest)
+		ErrBadRequest(errors.New("metric_type is missing in parameters")).Render(w, r)
 		return
 	}
 
 	metricName := chi.URLParam(r, "name")
 	if len(metricName) < 1 {
-		h.showError(w,
-			"name is missing in parameters",
-			http.StatusBadRequest)
+		ErrBadRequest(errors.New("name is missing in parameters")).Render(w, r)
 		return
 	}
 
 	metricElem, err := h.srv.FindMetric(r.Context(), metricName, metricType)
 	if err != nil {
 		if err == metric.ErrNoResult {
-			h.showError(w, "not found", http.StatusNotFound)
+			ErrNotFound(err).Render(w, r)
 			return
 		}
-		h.showError(w, "not found", http.StatusInternalServerError)
+		ErrInternalError(err).Render(w, r)
+		return
 	}
 
 	var v interface{}
@@ -237,9 +224,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	metricType := chi.URLParam(r, "metric_type")
 	metricName := chi.URLParam(r, "name")
 	if len(metricName) < 1 {
-		h.showError(w,
-			"name is missing in parameters",
-			http.StatusBadRequest)
+		ErrBadRequest(errors.New("name is missing in parameters")).Render(w, r)
 		return
 	}
 
@@ -254,9 +239,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	case metric.GaugeType:
 		value, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
-			h.showError(w,
-				fmt.Sprintf("cant convert value to float:%v", err.Error()),
-				http.StatusBadRequest)
+			ErrUnprocessableEntityRequest(err).Render(w, r)
 			return
 		}
 		metricElem = metric.NewGaugeMetric(metricName, value)
@@ -264,9 +247,7 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 	case metric.CounterType:
 		value, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
-			h.showError(w,
-				fmt.Sprintf("cant convert value to int64:%v", err.Error()),
-				http.StatusBadRequest)
+			ErrUnprocessableEntityRequest(err).Render(w, r)
 			return
 		}
 		metricElem = metric.NewCounterMetric(metricName, value)
@@ -274,19 +255,19 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 
 		actualMetric, err := h.srv.FindMetric(r.Context(), metricName, metricType)
 		if err != nil && !errors.Is(err, metric.ErrNoResult) {
-			h.showError(w, err.Error(), http.StatusInternalServerError)
+			ErrInternalError(err).Render(w, r)
 			return
 		} else if err == nil {
 			valueString = fmt.Sprintf("%v", *actualMetric.Delta+value)
 		}
 	default:
-		h.showError(w, "wrong metric type", http.StatusNotImplemented)
+		ErrUnprocessableEntityRequest(errors.New("wrong metric type")).Render(w, r)
 		return
 	}
 
 	err := h.srv.UpsertMetric(r.Context(), metricElem)
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusInternalServerError)
+		ErrInternalError(err).Render(w, r)
 		return
 	}
 
@@ -313,20 +294,20 @@ func (h *handler) UpdateFromURL(w http.ResponseWriter, r *http.Request) {
 func (h *handler) UpdateMany(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.showError(w, "cant get body", http.StatusBadRequest)
+		ErrBadRequest(err).Render(w, r)
 		return
 	}
 
 	var metrics []metric.Metric
 	err = json.Unmarshal(body, &metrics)
 	if err != nil {
-		h.showError(w, fmt.Sprintf("cant parse body:%s", string(body)), http.StatusBadRequest)
+		ErrUnprocessableEntityRequest(err).Render(w, r)
 		return
 	}
 
 	err = h.srv.UpsertMany(r.Context(), metrics)
 	if err != nil {
-		h.showError(w, err.Error(), http.StatusBadRequest)
+		ErrInternalError(err).Render(w, r)
 		return
 	}
 
