@@ -14,7 +14,7 @@ import (
 
 	"github.com/nickzhog/devops-tool/internal/server/config"
 	"github.com/nickzhog/devops-tool/internal/server/server"
-	"github.com/nickzhog/devops-tool/internal/server/web/middleware"
+	"github.com/nickzhog/devops-tool/internal/server/server/http/middleware"
 	"github.com/nickzhog/devops-tool/pkg/encryption"
 )
 
