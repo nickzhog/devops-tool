@@ -1,65 +1,101 @@
-# «Сервис сбора метрик и алертинга»
+# Distributed Telemetry Collector
 
-Я.Практикум: Курс — Golang advanced
+![Go Version](https://img.shields.io/badge/Go-1.19-00ADD8?style=flat&logo=go)
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-Реализовано:
+A high-performance, distributed telemetry and alerting system designed for reliable metric aggregation across microservice environments. 
 
-- Агент по сбору рантайм-метрик, который собирает метрики и отправляет метрики по протоколу HTTP и gRPC.
-- Сервер по сбору рантайм-метрик, который собирает репорты от агентов по протоколам HTTP и gRPC, отображает их различными способами
+This project implements a robust Agent-Server architecture capable of ingesting runtime metrics, hardware stats, and custom application telemetry via multiprotocol transports (HTTP/REST and gRPC). It focuses on data integrity, secure transmission, and fault tolerance.
 
-## Настройки приложений
+## 🏗 Architecture
 
-Приложения можно настраивать через переменные окружения или через аргументы, флаги. Приоритет для значений полученных через переменные окружения
+The system is split into two primary decoupled components:
+1. **Agent:** A lightweight daemon deployed on target nodes that gathers system metrics and pushes them to the central server using batching and retry mechanisms.
+2. **Server:** A high-throughput ingestion node that validates, processes, and persists incoming telemetry into a relational database (PostgreSQL) or in-memory cache (Redis).
 
-Агент:
+## ✨ Key Features
 
-- `ADDRESS` или `-a`: адрес на который будут отправляться метрики (по умолчанию `http://127.0.0.1:8080`)
-- `ADDRESS_GRPC` или `-g`: если указан, то метрики будут отправляться по gRPC
-- `POLL_INTERVAL` или `-p`: интервал обновления метрик (по умолчанию `2s`)
-- `REPORT_INTERVAL` или `-r`: интервал отправки метрик (по умолчанию `10s`)
-- `KEY` или `-k`: если указан ключ, то каждая метрика будет хэшироваться с его использованием
-- `CRYPTO_KEY` или `-crypto-key`: путь до файла с публичным ключем, если указан, то все запросы, содержащие тело, будут шифроваться
+* **Multiprotocol Support:** Seamlessly accepts data via gRPC or standard HTTP/REST endpoints.
+* **End-to-End Security:**
+  * **Payload Encryption:** Asymmetric RSA encryption ensures metric data cannot be intercepted in transit.
+  * **Data Integrity:** HMAC-SHA256 signatures validate the authenticity of incoming payloads.
+  * **Network Security:** Built-in CIDR-based IP filtering middleware drops unauthorized traffic at the edge.
+* **High-Throughput Processing:** Utilizes worker pools and batched database inserts to minimize I/O overhead and handle traffic spikes.
+* **Resilience & Reliability:** * Graceful shutdown implementations prevent data loss during deployments.
+  * Configurable exponential backoff for database connections and agent retries.
+* **Data Persistence:** Persistent storage layer backed by PostgreSQL (`pgx`), high-speed caching via Redis, and JSON file backup options.
 
-Сервер:
+## 🚀 Quick Start
 
-- `ADDRESS` или `-a`: адрес на котором запускается HTTP-сервер  (по умолчанию `:8080`)
-- `ADDRESS_GRPC` или `-g`: адрес на котором запускается gRPC-сервер  (по умолчанию `:3200`)
+### Prerequisites
+* Go 1.19
+* Docker & Docker Compose
+* Make
 
-- `DATABASE_DSN` или `-d`: если указан, то сервер будет использовать базу данных (по умолчанию используется кэширование)
+### Running Locally
 
-- `REDIS_ADDR` или `-redis_addr`: если указан, то сервер будет использовать Redis (приоритет для DATABASE_DSN)
-- `REDIS_PASSWORD` или `-redis_psw`: пароль Redis (опционально)
-- `REDIS_DB` или `-redis_db`: база данных Redis (по-умолчанию: 0)
-
-- `STORE_FILE` или `-f`: указывается путь файла, если указан, то сервер будет сохранять все метрики в JSON формате в этот файл(по умолчанию `/tmp/devops-metrics-db.json`)
-- `STORE_INTERVAL` или `-i`: интервал обновления метрик в файле (по умолчанию `1s`)
-- `RESTORE` или `-r`: восстановление метрик из файла при запуске программы (по умолчанию `true`)
-- `TRUSTED_SUBNET` или `-t`: если не указано, сервер будет работать со всеми адресами. В противном случае, требуется указать строку CIDR для бесклассовой адресации.
-- `KEY` или `-k`: если указан ключ, то перед обновлением каждой метрики будет проверена хэш-сумма метрики, с использованием ключа
-- `CRYPTO_KEY` или `-crypto-key`: путь до файла с приватным ключем, если указан, то все запросы, содержащие тело, будут расшифровываться
-
-В docker-compose настроен запуск приложений, используется Redis.
-Для тестирования:
+The easiest way to spin up the entire infrastructure (Server, Agent, and Redis) is via Docker Compose:
 
 ```bash
-docker-compose up
+# Clone the repository
+git clone [https://github.com/nickzhog/devops-tool.git](https://github.com/nickzhog/devops-tool.git)
+cd devops-tool
+
+# Spin up the environment
+docker-compose up -d --build
 ```
 
-## HTTP API
+### Manual Build & Development
 
-- `GET /` — главаная страница, отображаются все доступные метрики;
-- `GET /value/{metric_type}/{metric_name}` — получить значение метрики;
-- `POST /value/` — получить значение метрики (в теле указывается название и тип метрики, в формате JSON);
-- `POST /update/{metric_type}/{metric_name}/{value}` — обновить/добавить значение метрики;
-- `POST /update/` — обновить/добавить значение метрики (в теле указывается название, тип метрики и значение, в формате JSON);
-- `POST /updates/` — обновляет значения для массива метрик, отправленных в теле запроса, в JSON-формате.
+```bash
+# Build the server
+go build -o bin/server cmd/server/main.go
 
-Пример метрики в JSON-формате:
+# Build the agent
+go build -o bin/agent cmd/agent/main.go
 
-```json
-{
-    "id": "test_metric",
-    "type": "gauge",
-    "value": "123.321"
-}
+# Useful Make commands
+make test   # Run unit tests with coverage
+make lint   # Run static analysis
+make protoc # Regenerate gRPC code from protobuf definitions
 ```
+
+## ⚙️ Configuration
+
+The system is highly configurable via environment variables and CLI flags. Environment variables take precedence over flags.
+
+### Server Configuration
+| Environment Variable | Flag | Default | Description |
+|---|---|---|---|
+| `ADDRESS` | `-a` | `:8080` | Bind address for the HTTP server |
+| `ADDRESS_GRPC` | `-g` | `:3200` | Bind address for the gRPC server |
+| `DATABASE_DSN` | `-d` | `""` | PostgreSQL connection string |
+| `REDIS_ADDR` | `-redis_addr` | `""` | Redis address (takes priority over database DSN) |
+| `REDIS_PASSWORD` | `-redis_psw` | `""` | Redis password (optional) |
+| `REDIS_DB` | `-redis_db` | `0` | Redis database index |
+| `STORE_FILE` | `-f` | `/tmp/devops-metrics-db.json` | Path for JSON metrics backup file |
+| `STORE_INTERVAL` | `-i` | `1s` | Interval for periodically saving metrics to file |
+| `RESTORE` | `-r` | `true` | Restore metrics from file on server startup |
+| `TRUSTED_SUBNET` | `-t` | `""` | CIDR notation for allowed IP ranges |
+| `KEY` | `-k` | `""` | Secret key for HMAC signature validation |
+| `CRYPTO_KEY` | `-crypto-key`| `""` | Path to the RSA private key for payload decryption |
+
+### Agent Configuration
+| Environment Variable | Flag | Default | Description |
+|---|---|---|---|
+| `ADDRESS` | `-a` | `http://127.0.0.1:8080` | Target HTTP server address |
+| `ADDRESS_GRPC` | `-g` | `""` | Target gRPC server address (used over HTTP if set) |
+| `POLL_INTERVAL` | `-p` | `2s` | Frequency of gathering metrics |
+| `REPORT_INTERVAL` | `-r` | `10s` | Frequency of pushing metrics to the server |
+| `KEY` | `-k` | `""` | Secret key for generating HMAC signatures |
+| `CRYPTO_KEY` | `-crypto-key`| `""` | Path to the RSA public key for payload encryption |
+
+## 🛠 Tech Stack
+
+* **Language:** Go (Golang) 1.19
+* **RPC Framework:** gRPC / Protocol Buffers
+* **Database & Cache:** PostgreSQL (`jackc/pgx/v4`), Redis (`redis/go-redis/v9`)
+* **Infrastructure:** Docker, Docker Compose
+* **Routing:** `go-chi/chi`
+* **Configuration:** `caarlos0/env`
