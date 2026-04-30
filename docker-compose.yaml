@@ -28,7 +28,7 @@ services:
       - my-network
 
   redis:
-    image: redis:latest
+    image: redis:7.2-alpine
     ports:
       - "6379:6379"
     volumes:
@@ -39,11 +39,6 @@ services:
 volumes:
   redis_data:
 
-
 networks:
   my-network:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.28.0.0/16
