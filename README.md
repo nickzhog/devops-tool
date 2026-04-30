@@ -39,7 +39,7 @@ The easiest way to spin up the entire infrastructure (Server, Agent, and Redis) 
 
 ```bash
 # Clone the repository
-git clone [https://github.com/nickzhog/devops-tool.git](https://github.com/nickzhog/devops-tool.git)
+git clone https://github.com/nickzhog/devops-tool.git
 cd devops-tool
 
 # Spin up the environment
